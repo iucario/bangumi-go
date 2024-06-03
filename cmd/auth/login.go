@@ -110,44 +110,6 @@ func GetAccessToken(code string) {
 	fmt.Println(res.StatusCode)
 }
 
-func RefreshToken() error {
-	credential, err := LoadCredential()
-	if err != nil {
-		fmt.Println("No token found")
-		return err
-	}
-
-	data := []byte(fmt.Sprintf(`{
-		"grant_type": "refresh_token",
-		"client_id": "%s",
-		"client_secret": "%s",
-		"refresh_token": "%s",
-		"redirect_uri": "http://localhost:9090/auth"
-	}`, ClientId, AppSecret, credential.RefreshToken))
-
-	req, err := http.NewRequest("POST", API, bytes.NewBuffer(data))
-	req.Header.Set("User-Agent", UserAgent)
-	req.Header.Set("Content-Type", "application/json")
-	Check(err)
-	defer req.Body.Close()
-
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	if res.StatusCode != 200 {
-		return fmt.Errorf("Failed to refresh token")
-	}
-
-	newCredential := Credential{}
-	err = json.NewDecoder(res.Body).Decode(&newCredential)
-	Check(err)
-
-	SaveCredential(newCredential)
-	return nil
-}
-
 func openBrowser(url string) {
 	var err error
 

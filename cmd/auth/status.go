@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -42,13 +43,12 @@ func GetStatus(accessToken string) bool {
 	res, err := client.Do(req)
 	Check(err)
 
-	fmt.Println(res.StatusCode)
 	if res.StatusCode == 200 {
 		fmt.Println("Auth status: OK")
 		status := AuthStatus{}
 		err = json.NewDecoder(res.Body).Decode(&status)
 		Check(err)
-		fmt.Println(status)
+		log.Println("Auth status OK", status)
 		return true
 	}
 	fmt.Println("Auth status: Failed")
