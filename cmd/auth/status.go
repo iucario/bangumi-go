@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 
@@ -48,10 +49,15 @@ func GetStatus(accessToken string) bool {
 		status := AuthStatus{}
 		err = json.NewDecoder(res.Body).Decode(&status)
 		Check(err)
-		log.Println("Auth status OK", status)
+		log.Println("Auth status: OK", status)
 		return true
 	}
 	fmt.Println("Auth status: Failed")
+	body, err := io.ReadAll(res.Body)
+	Check(err)
+
+	fmt.Println("Response Body:", string(body))
+
 	return false
 }
 
