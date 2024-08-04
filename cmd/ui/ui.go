@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/iucario/bangumi-go/cmd"
@@ -38,6 +39,7 @@ func init() {
 
 func TuiMain(userInfo auth.UserInfo, userCollections list.UserCollections) {
 	app := tview.NewApplication()
+
 	watchList := createWatchList(userCollections)
 	collectionView := createCollectionView(userCollections)
 
@@ -91,6 +93,16 @@ func createCollectionView(userCollections list.UserCollections) *tview.TextView 
 }
 
 func createCollectionText(collection list.UserSubjectCollection) string {
-	text := fmt.Sprintf("[yellow]%s\n\n[white]%s", collection.Subject.Name, collection.Subject.ShortSummary)
+	text := fmt.Sprintf("[yellow]%s[-]\n%s\n\n%s\n", collection.Subject.NameCn, collection.Subject.Name, collection.Subject.ShortSummary)
+	tags := strings.Join(collection.Tags, ", ")
+	text += fmt.Sprintf("\nYour Tags: [green]%s[-]\n", tags)
+	if collection.Rate == 0 {
+		text += "Your Rate: [blue]N/A[-]\n"
+	} else {
+		text += fmt.Sprintf("Your Rate: [blue]%d[-]\n", collection.Rate)
+	}
+	text += fmt.Sprintf("Episodes Watched: %d/%d\n", collection.EpStatus, collection.Subject.Eps)
+	text += fmt.Sprintf("On Aired: %s\n", collection.Subject.Date)
+	text += fmt.Sprintf("User Score: %.1f\n", collection.Subject.Score)
 	return text
 }
