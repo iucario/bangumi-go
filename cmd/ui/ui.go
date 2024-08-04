@@ -39,20 +39,20 @@ func init() {
 func TuiMain(userInfo auth.UserInfo, userCollections list.UserCollections) {
 	app := tview.NewApplication()
 	watchList := createWatchList(userCollections)
-	subjectView := createSubjectView(userCollections)
+	collectionView := createCollectionView(userCollections)
 
 	// Update subject info when an item is selected
 	watchList.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
 		if index >= 0 && index < len(userCollections.Data) {
 			collection := userCollections.Data[index]
 			log.Printf("Selected %s", collection.Subject.Name)
-			subjectView.SetText(fmt.Sprintf("[yellow]%s\n\n[white]%s", collection.Subject.Name, collection.Subject.ShortSummary))
+			collectionView.SetText(createCollectionText(collection))
 		}
 	})
 
 	flex := tview.NewFlex().
 		AddItem(watchList, 0, 1, true).
-		AddItem(subjectView, 0, 2, false)
+		AddItem(collectionView, 0, 2, false)
 	if err := app.SetRoot(flex, true).SetFocus(flex).Run(); err != nil {
 		panic(err)
 	}
@@ -82,10 +82,15 @@ func createWatchList(userCollections list.UserCollections) *tview.List {
 	return watchList
 }
 
-func createSubjectView(userCollections list.UserCollections) *tview.TextView {
+func createCollectionView(userCollections list.UserCollections) *tview.TextView {
 	subjectView := tview.NewTextView().SetDynamicColors(true).SetWrap(true)
 	subjectView.SetBorder(true).SetTitle("Subject Info").SetTitleAlign(tview.AlignLeft)
 	firstCollection := userCollections.Data[0]
-	subjectView.SetText(fmt.Sprintf("[yellow]%s\n\n[white]%s", firstCollection.Subject.Name, firstCollection.Subject.ShortSummary))
+	subjectView.SetText(createCollectionText(firstCollection))
 	return subjectView
+}
+
+func createCollectionText(collection list.UserSubjectCollection) string {
+	text := fmt.Sprintf("[yellow]%s\n\n[white]%s", collection.Subject.Name, collection.Subject.ShortSummary)
+	return text
 }
