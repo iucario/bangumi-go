@@ -1,6 +1,11 @@
 package Ui
 
 import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/gdamore/tcell/v2"
 	"github.com/iucario/bangumi-go/cmd"
 	"github.com/iucario/bangumi-go/cmd/auth"
 	"github.com/iucario/bangumi-go/cmd/list"
@@ -16,7 +21,14 @@ var uiCmd = &cobra.Command{
 		userInfo, err := auth.GetUserInfo(credential.AccessToken)
 		auth.Check(err)
 		userCollections, _ := list.ListAnimeCollection(credential.AccessToken, userInfo.Username, 3, 20, 0)
-		TuiMain(userCollections)
+		logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		if err != nil {
+			log.Fatalf("Failed to open log file: %v", err)
+		}
+		defer logFile.Close()
+		log.SetOutput(logFile)
+		log.Println("Starting UI command")
+		TuiMain(userInfo, userCollections)
 	},
 }
 
@@ -24,15 +36,56 @@ func init() {
 	cmd.RootCmd.AddCommand(uiCmd)
 }
 
-func TuiMain(userCollections list.UserCollections) {
+func TuiMain(userInfo auth.UserInfo, userCollections list.UserCollections) {
 	app := tview.NewApplication()
+	watchList := createWatchList(userCollections)
+	subjectView := createSubjectView(userCollections)
+
+	// Update subject info when an item is selected
+	watchList.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+		if index >= 0 && index < len(userCollections.Data) {
+			collection := userCollections.Data[index]
+			log.Printf("Selected %s", collection.Subject.Name)
+			subjectView.SetText(fmt.Sprintf("[yellow]%s\n\n[white]%s", collection.Subject.Name, collection.Subject.ShortSummary))
+		}
+	})
+
 	flex := tview.NewFlex().
-		AddItem(tview.NewBox().SetBorder(true).SetTitle("Left"), 0, 1, true).
-		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(tview.NewBox().SetBorder(true).SetTitle("Top 4 rows"), 4, 1, false).
-			AddItem(tview.NewBox().SetBorder(true).SetTitle("Middle 2*left_width"), 0, 3, false).
-			AddItem(tview.NewBox().SetBorder(true).SetTitle("Bottom 4 rows"), 4, 1, false), 0, 2, false)
+		AddItem(watchList, 0, 1, true).
+		AddItem(subjectView, 0, 2, false)
 	if err := app.SetRoot(flex, true).SetFocus(flex).Run(); err != nil {
 		panic(err)
 	}
+}
+
+func createWatchList(userCollections list.UserCollections) *tview.List {
+	watchList := tview.NewList()
+	watchList.SetBorder(true).SetTitle("Watch List").SetTitleAlign(tview.AlignLeft)
+	for _, collection := range userCollections.Data {
+		watchList.AddItem(collection.Subject.Name, "", 0, nil)
+	}
+
+	// Set up keybindings for navigation
+	watchList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case 'j':
+				watchList.SetCurrentItem(watchList.GetCurrentItem() + 1)
+			case 'k':
+				watchList.SetCurrentItem(watchList.GetCurrentItem() - 1)
+			}
+		}
+		return event
+	})
+
+	return watchList
+}
+
+func createSubjectView(userCollections list.UserCollections) *tview.TextView {
+	subjectView := tview.NewTextView().SetDynamicColors(true).SetWrap(true)
+	subjectView.SetBorder(true).SetTitle("Subject Info").SetTitleAlign(tview.AlignLeft)
+	firstCollection := userCollections.Data[0]
+	subjectView.SetText(fmt.Sprintf("[yellow]%s\n\n[white]%s", firstCollection.Subject.Name, firstCollection.Subject.ShortSummary))
+	return subjectView
 }
