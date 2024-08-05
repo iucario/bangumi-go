@@ -1,6 +1,6 @@
-# Bangumi CLI
+# Bangumi Terminal UI
 
-Bangumi CLI in Golang
+Bangumi CLI and TUI in Golang
 
 ## Commands
 
@@ -14,3 +14,5 @@ Bangumi CLI in Golang
   List collection
 - `version`
   Print the version number of bgm-cli
+- `ui`
+  Start terminal UI
