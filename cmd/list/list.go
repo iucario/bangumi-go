@@ -17,7 +17,7 @@ var CollectionType map[string]int = map[string]int{
 	"wish":    1,
 	"done":    2,
 	"watch":   3,
-	"on_hold": 4,
+	"onhold":  4,
 	"dropped": 5,
 }
 
@@ -95,15 +95,29 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List collection",
 	Run: func(cmd *cobra.Command, args []string) {
+		subjectType, _ := cmd.Flags().GetString("subject")
+		collectionType, _ := cmd.Flags().GetString("collection")
 		credential, _ := auth.LoadCredential()
 		userInfo, err := auth.GetUserInfo(credential.AccessToken)
 		auth.Check(err)
-		watchCollections, _ := ListUserCollection(credential.AccessToken, userInfo.Username, "all", "watch", 30, 0)
+		watchCollections, _ := ListUserCollection(credential.AccessToken, userInfo.Username, subjectType, collectionType, 30, 0)
 		log.Printf("collections in watching: %d\n", watchCollections.Total)
+
+		fmt.Printf("Total: %d. Showing: %d\n", watchCollections.Total, len(watchCollections.Data))
 		for i, collection := range watchCollections.Data {
-			fmt.Printf("%d. %s\n", i+1, collection.Subject.NameCn)
+			fmt.Printf("%d. %d/%d %s\n", i+1, collection.EpStatus, collection.Subject.Eps, collection.Subject.NameCn)
 		}
 	},
+}
+
+func init() {
+	var subjectType string
+	var collectionType string
+	listCmd.Flags().StringVarP(&collectionType, "collection", "c", "watch",
+		"Collection type: wish, done, watch, onhold, dropped, all.")
+	listCmd.Flags().StringVarP(&subjectType, "subject", "s", "all",
+		"Subject type: book, anime, music, game, real, all.")
+	cmd.RootCmd.AddCommand(listCmd)
 }
 
 // subjectType: "anime", "real", "all".
@@ -181,8 +195,4 @@ func ListCollection(access_token string, username string, subjectType int, colle
 		return userCollections, err
 	}
 	return userCollections, nil
-}
-
-func init() {
-	cmd.RootCmd.AddCommand(listCmd)
 }
