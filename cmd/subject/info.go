@@ -1,0 +1,42 @@
+package subject
+
+import (
+	"fmt"
+	"log"
+	"strconv"
+
+	"github.com/iucario/bangumi-go/api"
+	"github.com/iucario/bangumi-go/cmd/list"
+	"github.com/spf13/cobra"
+)
+
+var infoCmd = &cobra.Command{
+	Use:   "info",
+	Short: "Subject information",
+	Args:  cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		subjectId, err := strconv.Atoi(id)
+		if err != nil {
+			log.Fatalf("Invalid subject ID: %s", id)
+			return
+		}
+		subject := GetSubjectInfo(subjectId)
+		fmt.Printf("%d\n%s\n%s\n%s\n", subject.ID, subject.NameCn, subject.Name, subject.Summary)
+	},
+}
+
+func init() {
+	subCmd.AddCommand(infoCmd)
+}
+
+func GetSubjectInfo(subjectId int) list.Subject {
+	url := fmt.Sprintf("https://api.bgm.tv/v0/subjects/%d", subjectId)
+
+	subject := list.Subject{}
+	err := api.GetRequest(url, &subject)
+	if err != nil {
+		log.Fatalf("Failed to get subject info: %v", err)
+	}
+	return subject
+}
