@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd"
 	"github.com/iucario/bangumi-go/cmd/auth"
 	"github.com/iucario/bangumi-go/cmd/list"
@@ -37,7 +38,7 @@ func init() {
 	cmd.RootCmd.AddCommand(uiCmd)
 }
 
-func TuiMain(userInfo auth.UserInfo, userCollections list.UserCollections) {
+func TuiMain(userInfo auth.UserInfo, userCollections api.UserCollections) {
 	app := tview.NewApplication()
 
 	watchList := createWatchList(userCollections)
@@ -60,7 +61,7 @@ func TuiMain(userInfo auth.UserInfo, userCollections list.UserCollections) {
 	}
 }
 
-func createWatchList(userCollections list.UserCollections) *tview.List {
+func createWatchList(userCollections api.UserCollections) *tview.List {
 	watchList := tview.NewList()
 	watchList.SetBorder(true).SetTitle("Watch List").SetTitleAlign(tview.AlignLeft)
 	for _, collection := range userCollections.Data {
@@ -84,7 +85,7 @@ func createWatchList(userCollections list.UserCollections) *tview.List {
 	return watchList
 }
 
-func createCollectionView(userCollections list.UserCollections) *tview.TextView {
+func createCollectionView(userCollections api.UserCollections) *tview.TextView {
 	subjectView := tview.NewTextView().SetDynamicColors(true).SetWrap(true)
 	subjectView.SetBorder(true).SetTitle("Subject Info").SetTitleAlign(tview.AlignLeft)
 	firstCollection := userCollections.Data[0]
@@ -92,7 +93,7 @@ func createCollectionView(userCollections list.UserCollections) *tview.TextView 
 	return subjectView
 }
 
-func createCollectionText(collection list.UserSubjectCollection) string {
+func createCollectionText(collection api.UserSubjectCollection) string {
 	text := fmt.Sprintf("[yellow]%s[-]\n%s\n\n%s\n", collection.Subject.NameCn, collection.Subject.Name, collection.Subject.ShortSummary)
 	tags := strings.Join(collection.Tags, ", ")
 	text += fmt.Sprintf("\nYour Tags: [green]%s[-]\n", tags)

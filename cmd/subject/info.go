@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/iucario/bangumi-go/api"
-	"github.com/iucario/bangumi-go/cmd/list"
 	"github.com/spf13/cobra"
 )
 
@@ -30,10 +29,10 @@ func init() {
 	subCmd.AddCommand(infoCmd)
 }
 
-func GetSubjectInfo(subjectId int) list.Subject {
+func GetSubjectInfo(subjectId int) api.Subject {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/subjects/%d", subjectId)
 
-	subject := list.Subject{}
+	subject := api.Subject{}
 	err := api.GetRequest(url, &subject)
 	if err != nil {
 		log.Fatalf("Failed to get subject info: %v", err)
