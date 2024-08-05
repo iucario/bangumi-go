@@ -36,26 +36,26 @@ type UserCollections struct {
 }
 
 type UserSubjectCollection struct {
-	UpdatedAt   time.Time `json:"updated_at"`
-	Comment     string    `json:"comment"`
-	Tags        []string  `json:"tags"` // my tags
-	Subject     Subject   `json:"subject"`
-	SubjectID   uint32    `json:"subject_id"`
-	VolStatus   uint32    `json:"vol_status"`
-	EpStatus    uint32    `json:"ep_status"`    // current episode?
-	SubjectType uint32    `json:"subject_type"` // 2: anime
-	Type        uint32    `json:"type"`         // 3: watching
-	Rate        uint32    `json:"rate"`
-	Private     bool      `json:"private"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+	Comment     string      `json:"comment"`
+	Tags        []string    `json:"tags"` // my tags
+	Subject     SlimSubject `json:"subject"`
+	SubjectID   uint32      `json:"subject_id"`
+	VolStatus   uint32      `json:"vol_status"`
+	EpStatus    uint32      `json:"ep_status"`    // current episode?
+	SubjectType uint32      `json:"subject_type"` // 2: anime
+	Type        uint32      `json:"type"`         // 3: watching
+	Rate        uint32      `json:"rate"`
+	Private     bool        `json:"private"`
 }
 
 type Subject struct {
-	Date            string            `json:"date"`
 	Images          map[string]string `json:"images"`
 	Name            string            `json:"name"`
 	NameCn          string            `json:"name_cn"`
-	ShortSummary    string            `json:"short_summary"`
 	Summary         string            `json:"summary"`
+	Nsfw            bool              `json:"nsfw"`
+	Locked          bool              `json:"locked"`
 	Tags            []Tag             `json:"tags"`
 	Score           float64           `json:"score"`
 	Type            uint32            `json:"type"`
@@ -66,6 +66,23 @@ type Subject struct {
 	Rank            uint32            `json:"rank"`
 	Rating          map[string]uint32 `json:"rating"`
 	Collection      map[string]uint32 `json:"collection"`
+	Date            string            `json:"date"` // can be empty
+}
+
+type SlimSubject struct {
+	ID              uint32            `json:"id"`
+	Type            uint32            `json:"type"`
+	Images          map[string]string `json:"images"`
+	Name            string            `json:"name"`
+	NameCn          string            `json:"name_cn"`
+	ShortSummary    string            `json:"short_summary"`
+	Tags            []Tag             `json:"tags"` // frist 10 tags
+	Score           float64           `json:"score"`
+	Eps             uint32            `json:"eps"`
+	Volumes         uint32            `json:"volumes"`
+	CollectionTotal uint32            `json:"collection_total"`
+	Rank            uint32            `json:"rank"`
+	Date            string            `json:"date"` // can be empty
 }
 
 type Tag struct {
