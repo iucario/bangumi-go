@@ -7,6 +7,7 @@ replace github.com/iucario/bangumi-go/cmd => ./cmd
 replace github.com/iucario/bangumi-go/cmd/auth => ./cmd/auth
 
 replace github.com/iucario/bangumi-go/cmd/list => ./cmd/list
+replace github.com/iucario/bangumi-go/api => ./api
 
 require github.com/spf13/cobra v1.8.0
 

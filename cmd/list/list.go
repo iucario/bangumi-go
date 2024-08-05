@@ -1,13 +1,11 @@
 package list
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"time"
 
+	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd"
 	"github.com/iucario/bangumi-go/cmd/auth"
 	"github.com/spf13/cobra"
@@ -65,7 +63,7 @@ type Subject struct {
 	Volumes         uint32            `json:"volumes"`
 	CollectionTotal uint32            `json:"collection_total"`
 	Rank            uint32            `json:"rank"`
-	Rating          map[string]uint32 `json:"rating"`
+	Rating          Rating            `json:"rating"`
 	Collection      map[string]uint32 `json:"collection"`
 	Date            string            `json:"date"` // can be empty
 }
@@ -89,6 +87,26 @@ type SlimSubject struct {
 type Tag struct {
 	Name  string
 	Count int
+}
+
+type Rating struct {
+	Rank  int     `json:"rank"`
+	Total int     `json:"total"`
+	Count Count   `json:"count"`
+	Score float64 `json:"score"`
+}
+
+type Count struct {
+	Field1  uint32
+	Field2  uint32
+	Field3  uint32
+	Field4  uint32
+	Field5  uint32
+	Field6  uint32
+	Field7  uint32
+	Field8  uint32
+	Field9  uint32
+	Field10 uint32
 }
 
 var listCmd = &cobra.Command{
@@ -153,46 +171,23 @@ func ListUserCollection(access_token string, username string, subjectType string
 // List user bangumi collection
 // Does not include subjectType or collectionType in parameters if is set to -1.
 func ListCollection(access_token string, username string, subjectType int, collectionType int, limit int, offset int) (UserCollections, error) {
-	userCollections := UserCollections{}
+
 	baseUrl := fmt.Sprintf("https://api.bgm.tv/v0/users/%s/collections", username)
-	var api string
+	var url string
 	switch {
 	case subjectType == -1 && collectionType == -1:
-		api = fmt.Sprintf("%s?limit=%d&offset=%d", baseUrl, limit, offset)
+		url = fmt.Sprintf("%s?limit=%d&offset=%d", baseUrl, limit, offset)
 	case subjectType == -1:
-		api = fmt.Sprintf("%s?type=%d&limit=%d&offset=%d", baseUrl, collectionType, limit, offset)
+		url = fmt.Sprintf("%s?type=%d&limit=%d&offset=%d", baseUrl, collectionType, limit, offset)
 	case collectionType == -1:
-		api = fmt.Sprintf("%s?subject_type=%d&limit=%d&offset=%d", baseUrl, subjectType, limit, offset)
+		url = fmt.Sprintf("%s?subject_type=%d&limit=%d&offset=%d", baseUrl, subjectType, limit, offset)
 	default:
-		api = fmt.Sprintf("%s?subject_type=%d&type=%d&limit=%d&offset=%d", baseUrl, subjectType, collectionType, limit, offset)
+		url = fmt.Sprintf("%s?subject_type=%d&type=%d&limit=%d&offset=%d", baseUrl, subjectType, collectionType, limit, offset)
 	}
 
-	log.Printf("ListCollection api: %s\n", api)
+	log.Printf("ListCollection api: %s\n", url)
 
-	req, err := http.NewRequest("GET", api, nil)
-	req.Header.Set("User-Agent", auth.UserAgent)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", access_token))
-	if err != nil {
-		return userCollections, err
-	}
-
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		return userCollections, err
-	}
-	defer res.Body.Close()
-
-	bodyBytes, _ := io.ReadAll(res.Body)
-	bodyString := string(bodyBytes)
-	if res.StatusCode != 200 {
-		return userCollections, fmt.Errorf("[error] status code: %d, response: %s", res.StatusCode, bodyString)
-	}
-
-	err = json.Unmarshal(bodyBytes, &userCollections)
-	if err != nil {
-		return userCollections, err
-	}
-	return userCollections, nil
+	userCollections := UserCollections{}
+	err := api.AuthenticatedGetRequest(url, access_token, &userCollections)
+	return userCollections, err
 }
