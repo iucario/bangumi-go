@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -97,23 +98,37 @@ var listCmd = &cobra.Command{
 		credential, _ := auth.LoadCredential()
 		userInfo, err := auth.GetUserInfo(credential.AccessToken)
 		auth.Check(err)
-		userCollections, _ := ListAnimeCollection(credential.AccessToken, userInfo.Username, 3, 20, 0)
-		for i, collection := range userCollections.Data {
-			fmt.Printf("%d. %s\n", i+1, collection.Subject.Name)
+		watchCollections, _ := ListUserCollection(credential.AccessToken, userInfo.Username, "all", "watch", 30, 0)
+		log.Printf("collections in watching: %d\n", watchCollections.Total)
+		for i, collection := range watchCollections.Data {
+			fmt.Printf("%d. %s\n", i+1, collection.Subject.NameCn)
 		}
 	},
 }
 
-func ListAnimeCollection(access_token string, username string, collectionType int, limit int, offset int) (UserCollections, error) {
+// subjectType: "anime", "real", "all".
+// collectionType: "wish", "done", "watch", "on_hold", "dropped", "all".
+func ListUserCollection(access_token string, username string, subjectType string, collectionType string, limit int, offset int) (UserCollections, error) {
 	userCollections := UserCollections{}
-	subjectType := SubjectType["anime"]
+	var subjectTypeInt int
+	var collectionTypeInt int
+	if subjectType == "all" {
+		subjectTypeInt = -1
+	} else {
+		subjectTypeInt = SubjectType[subjectType]
+	}
+	if collectionType == "all" {
+		collectionTypeInt = -1
+	} else {
+		collectionTypeInt = CollectionType[collectionType]
+	}
 
 	credential, err := auth.LoadCredential()
 	if err != nil {
 		return userCollections, err
 	}
 
-	userCollections, err = ListCollection(credential.AccessToken, username, subjectType, collectionType, limit, offset)
+	userCollections, err = ListCollection(credential.AccessToken, username, subjectTypeInt, collectionTypeInt, limit, offset)
 	if err != nil {
 		return userCollections, err
 	}
@@ -122,10 +137,24 @@ func ListAnimeCollection(access_token string, username string, collectionType in
 }
 
 // List user bangumi collection
+// Does not include subjectType or collectionType in parameters if is set to -1.
 func ListCollection(access_token string, username string, subjectType int, collectionType int, limit int, offset int) (UserCollections, error) {
 	userCollections := UserCollections{}
-	api := fmt.Sprintf("https://api.bgm.tv/v0/users/%s/collections?subject_type=%d&type=%d&limit=%d&offset=%d",
-		username, subjectType, collectionType, limit, offset)
+	baseUrl := fmt.Sprintf("https://api.bgm.tv/v0/users/%s/collections", username)
+	var api string
+	switch {
+	case subjectType == -1 && collectionType == -1:
+		api = fmt.Sprintf("%s?limit=%d&offset=%d", baseUrl, limit, offset)
+	case subjectType == -1:
+		api = fmt.Sprintf("%s?type=%d&limit=%d&offset=%d", baseUrl, collectionType, limit, offset)
+	case collectionType == -1:
+		api = fmt.Sprintf("%s?subject_type=%d&limit=%d&offset=%d", baseUrl, subjectType, limit, offset)
+	default:
+		api = fmt.Sprintf("%s?subject_type=%d&type=%d&limit=%d&offset=%d", baseUrl, subjectType, collectionType, limit, offset)
+	}
+
+	log.Printf("ListCollection api: %s\n", api)
+
 	req, err := http.NewRequest("GET", api, nil)
 	req.Header.Set("User-Agent", auth.UserAgent)
 	req.Header.Set("Content-Type", "application/json")

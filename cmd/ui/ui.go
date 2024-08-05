@@ -21,7 +21,7 @@ var uiCmd = &cobra.Command{
 		credential, _ := auth.LoadCredential()
 		userInfo, err := auth.GetUserInfo(credential.AccessToken)
 		auth.Check(err)
-		userCollections, _ := list.ListAnimeCollection(credential.AccessToken, userInfo.Username, 3, 20, 0)
+		userCollections, _ := list.ListUserCollection(credential.AccessToken, userInfo.Username, "all", "watch", 20, 0)
 		logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 		if err != nil {
 			log.Fatalf("Failed to open log file: %v", err)
@@ -64,7 +64,7 @@ func createWatchList(userCollections list.UserCollections) *tview.List {
 	watchList := tview.NewList()
 	watchList.SetBorder(true).SetTitle("Watch List").SetTitleAlign(tview.AlignLeft)
 	for _, collection := range userCollections.Data {
-		watchList.AddItem(collection.Subject.Name, "", 0, nil)
+		watchList.AddItem(collection.Subject.NameCn, "", 0, nil)
 	}
 
 	// Set up keybindings for navigation
