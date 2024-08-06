@@ -18,6 +18,13 @@ var SubjectType map[string]int = map[string]int{
 	"real":  6,
 }
 
+var EpisodeCollectionType map[string]int = map[string]int{
+	"uncollected": 0,
+	"wish":        1,
+	"done":        2,
+	"dropped":     3,
+}
+
 type UserCollections struct {
 	Total  uint32                  `json:"total"`
 	Limit  uint32                  `json:"limit"`
@@ -73,6 +80,33 @@ type SlimSubject struct {
 	CollectionTotal uint32            `json:"collection_total"`
 	Rank            uint32            `json:"rank"`
 	Date            string            `json:"date"` // can be empty
+}
+
+type UserEpisodeCollections struct {
+	Total  int                     `json:"total"`
+	Limit  int                     `json:"limit"`
+	Offset int                     `json:"offset"`
+	Data   []UserEpisodeCollection `json:"data"`
+}
+
+type UserEpisodeCollection struct {
+	Episode Episode `json:"episode"`
+	Type    int     `json:"type"`
+}
+
+type Episode struct {
+	Airdate     string  `json:"airdate"`
+	Name        string  `json:"name"`
+	NameCn      string  `json:"name_cn"`
+	Duration    string  `json:"duration"`
+	Description string  `json:"description"`
+	Ep          float32 `json:"ep"`
+	SubjectId   int     `json:"subject_id"`
+	Sort        float32 `json:"sort"`
+	Comment     uint32  `json:"comment"`
+	Id          int     `json:"id"`
+	Type        int     `json:"type"`
+	Disc        uint8   `json:"disc"`
 }
 
 type Tag struct {
