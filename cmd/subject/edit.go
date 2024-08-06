@@ -2,7 +2,7 @@ package subject
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"strconv"
 
 	"github.com/iucario/bangumi-go/api"
@@ -19,10 +19,10 @@ var editCmd = &cobra.Command{
 		watch, _ := cmd.Flags().GetInt("watch")
 		subjectId, err := strconv.Atoi(id)
 		if err != nil {
-			log.Fatalf("Invalid subject ID: %s", id)
+			slog.Error(fmt.Sprintf("Invalid subject ID: %s", id))
 			return
 		}
-		log.Printf("edit subjectId=%d watch=%d\n", subjectId, watch)
+		slog.Info(fmt.Sprintf("edit subjectId=%d watch=%d\n", subjectId, watch))
 		credential, _ := auth.LoadCredential()
 		userInfo, err := auth.GetUserInfo(credential.AccessToken)
 		auth.Check(err)
@@ -42,24 +42,24 @@ func init() {
 func WatchNextEpisode(token string, username string, subjectId int) {
 	userSubjectCollection, err := GetUserSubjectCollection(token, username, subjectId)
 	if err != nil {
-		log.Fatalf("Failed to get user subject collection: %v\n", err)
+		slog.Error(fmt.Sprintf("Failed to get user subject collection: %v\n", err))
 	}
 	epStatus := userSubjectCollection.EpStatus
 	totalEps := userSubjectCollection.Subject.Eps
 	subjectName := userSubjectCollection.Subject.NameCn
 	if epStatus > totalEps {
-		log.Fatalf(fmt.Sprintf("No more episodes to watch. Current: %d, Total: %d\n", epStatus, totalEps))
+		slog.Error(fmt.Sprintf("No more episodes to watch. Current: %d, Total: %d\n", epStatus, totalEps))
 	}
 
 	userEpisodeCollections, err := GetUserEpisodeCollections(token, username, subjectId, 0, 100, 0)
 	episode, err := getCurrentEpisode(userEpisodeCollections.Data)
 	if err != nil {
-		log.Fatalf(": %v\n", err)
+		slog.Error(fmt.Sprintf("%v\n", err))
 	}
 
 	PutEpisode(token, int(episode.Episode.Id), "done")
 	epName := episode.Episode.NameCn
-	log.Printf("Marked as done: %s episode %d. %s\n", subjectName, episode.Episode.Id, epName)
+	slog.Info(fmt.Sprintf("Marked as done: %s episode %d. %s\n", subjectName, episode.Episode.Id, epName))
 }
 
 // Return the first episode that is not done

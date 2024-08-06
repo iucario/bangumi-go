@@ -2,7 +2,7 @@ package list
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd"
@@ -20,7 +20,7 @@ var listCmd = &cobra.Command{
 		userInfo, err := auth.GetUserInfo(credential.AccessToken)
 		auth.Check(err)
 		watchCollections, _ := ListUserCollection(credential.AccessToken, userInfo.Username, subjectType, collectionType, 30, 0)
-		log.Printf("collections in watching: %d\n", watchCollections.Total)
+		slog.Info(fmt.Sprintf("collections in watching: %d\n", watchCollections.Total))
 
 		fmt.Printf("Total: %d. Showing: %d\n", watchCollections.Total, len(watchCollections.Data))
 		for i, collection := range watchCollections.Data {
@@ -86,7 +86,7 @@ func ListCollection(access_token string, username string, subjectType int, colle
 		url = fmt.Sprintf("%s?subject_type=%d&type=%d&limit=%d&offset=%d", baseUrl, subjectType, collectionType, limit, offset)
 	}
 
-	log.Printf("ListCollection api: %s\n", url)
+	slog.Info(fmt.Sprintf("ListCollection api: %s\n", url))
 
 	userCollections := api.UserCollections{}
 	err := api.AuthenticatedGetRequest(url, access_token, &userCollections)

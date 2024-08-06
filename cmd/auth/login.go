@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os/exec"
 	"runtime"
@@ -78,7 +79,7 @@ func Start(wg *sync.WaitGroup) {
 	go func() {
 		defer wg.Done()
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalf("ListenAndServe(): %v", err)
+			slog.Error(fmt.Sprintf("ListenAndServe(): %v", err))
 		}
 	}()
 

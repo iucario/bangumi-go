@@ -2,7 +2,7 @@ package subject
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"strconv"
 
 	"github.com/iucario/bangumi-go/api"
@@ -17,7 +17,7 @@ var infoCmd = &cobra.Command{
 		id := args[0]
 		subjectId, err := strconv.Atoi(id)
 		if err != nil {
-			log.Fatalf("Invalid subject ID: %s", id)
+			slog.Error(fmt.Sprintf("Invalid subject ID: %s", id))
 			return
 		}
 		subject := GetSubjectInfo(subjectId)
@@ -35,7 +35,7 @@ func GetSubjectInfo(subjectId int) api.Subject {
 	subject := api.Subject{}
 	err := api.GetRequest(url, &subject)
 	if err != nil {
-		log.Fatalf("Failed to get subject info: %v", err)
+		slog.Error(fmt.Sprintf("Failed to get subject info: %v", err))
 	}
 	return subject
 }

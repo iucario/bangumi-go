@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/iucario/bangumi-go/cmd/auth"
@@ -66,8 +66,8 @@ func sendRequest(req *http.Request, data interface{}) error {
 	bodyBytes, _ := io.ReadAll(res.Body)
 	bodyString := string(bodyBytes)
 	if res.StatusCode != http.StatusOK {
-		log.Fatalf("status code: %d, response: %s", res.StatusCode, bodyString)
-		return fmt.Errorf("[error] status code: %d, response: %s", res.StatusCode, bodyString)
+		slog.Error(fmt.Sprintf("status code: %d, response: %s", res.StatusCode, bodyString))
+		return fmt.Errorf(fmt.Sprintf("[error] status code: %d, response: %s", res.StatusCode, bodyString))
 	}
 
 	err = json.Unmarshal(bodyBytes, data)

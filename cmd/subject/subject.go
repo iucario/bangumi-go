@@ -2,7 +2,7 @@ package subject
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd"
@@ -28,7 +28,7 @@ func GetUserSubjectCollection(token string, username string, subjectId int) (api
 	userSubjectCollection := api.UserSubjectCollection{}
 	err := api.AuthenticatedGetRequest(url, token, &userSubjectCollection)
 	if err != nil {
-		log.Fatalf("Failed to get user subject collection: %v\n", err)
+		slog.Error(fmt.Sprintf("Failed to get user subject collection: %v\n", err))
 	}
 	return userSubjectCollection, err
 }
@@ -38,7 +38,7 @@ func GetUserEpisodeCollections(token, username string, subjectId, offset, limit,
 	userEpisodeCollections := api.UserEpisodeCollections{}
 	err := api.AuthenticatedGetRequest(url, token, &userEpisodeCollections)
 	if err != nil {
-		log.Fatalf("Failed to get user episode collection: %v\n", err)
+		slog.Error(fmt.Sprintf("Failed to get user episode collection: %v\n", err))
 	}
 	return userEpisodeCollections, err
 }
@@ -52,7 +52,7 @@ func PutEpisode(token string, episodeId int, status string) error {
 	`, typeInt))
 	err := api.PutRequest(url, token, jsonBytes, nil)
 	if err != nil {
-		log.Fatalf("Failed to put episode: %v", err)
+		slog.Error(fmt.Sprintf("Failed to put episode: %v", err))
 	}
 	return err
 }

@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"fmt"
 	"log"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -19,7 +21,7 @@ var logoutCmd = &cobra.Command{
 func deleteCredential() {
 	err := os.RemoveAll(ConfigDir)
 	if err != nil {
-		log.Fatalf("Failed to delete config directory: %s", err)
+		slog.Error(fmt.Sprintf("Failed to delete config directory: %s", err))
 	}
 }
 

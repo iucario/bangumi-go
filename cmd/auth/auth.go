@@ -3,7 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/user"
 
@@ -45,7 +45,7 @@ func init() {
 
 	usr, err := user.Current()
 	if err != nil {
-		log.Fatalf(err.Error())
+		slog.Error(err.Error())
 	}
 	ConfigDir = usr.HomeDir + "/.config/bangumi-go"
 	// Here you will define your flags and configuration settings.
