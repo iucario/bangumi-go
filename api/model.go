@@ -10,12 +10,28 @@ var CollectionType map[string]int = map[string]int{
 	"dropped": 5,
 }
 
+var CollectionTypeRev map[int]string = map[int]string{
+	1: "wish",
+	2: "done",
+	3: "watch",
+	4: "onhold",
+	5: "dropped",
+}
+
 var SubjectType map[string]int = map[string]int{
 	"book":  1,
 	"anime": 2,
 	"music": 3,
 	"game":  4,
 	"real":  6,
+}
+
+var SubjectTypeRev map[int]string = map[int]string{
+	1: "book",
+	2: "anime",
+	3: "music",
+	4: "game",
+	6: "real",
 }
 
 var EpisodeCollectionType map[string]int = map[string]int{

@@ -16,6 +16,7 @@ var subCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(`Available commands:
 bgm sub info <subject_id>
+bgm sub status <subject_id>
 bgm sub edit <subject_id> [-w <episode number>]`)
 	},
 }

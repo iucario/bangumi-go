@@ -84,8 +84,10 @@ func WatchToEpisode(token string, username string, subjectId int, episodeNum int
 			deleteList[i-validNum] = int(userEpisode.Episode.Id)
 		}
 	}
+
 	PatchEpisodes(token, subjectId, watchList, "done")
 	PatchEpisodes(token, subjectId, deleteList, "delete")
+
 }
 
 // Return the first episode that is not done
@@ -98,12 +100,4 @@ func getCurrentEpisode(userEpisodeCollection []api.UserEpisodeCollection) (api.U
 		}
 	}
 	return userEpisodeCollection[0], fmt.Errorf("No more episodes to watch")
-}
-
-func getEpisodeStatus(userEpisodeCollection *[]api.UserEpisodeCollection) []int {
-	status := make([]int, len(*userEpisodeCollection))
-	for i, userEpisode := range *userEpisodeCollection {
-		status[i] = int(userEpisode.Type)
-	}
-	return status
 }
