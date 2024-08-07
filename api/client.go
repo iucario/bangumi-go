@@ -70,11 +70,12 @@ func sendRequest(req *http.Request, data interface{}) error {
 		return fmt.Errorf(fmt.Sprintf("[error] status code: %d, response: %s", res.StatusCode, bodyString))
 	}
 
-	err = json.Unmarshal(bodyBytes, data)
-	if err != nil {
+	if len(bodyBytes) == 0 {
+		return nil
+	} else {
+		err = json.Unmarshal(bodyBytes, data)
 		return err
 	}
-	return nil
 }
 
 func buildRequest(url string) (*http.Request, error) {

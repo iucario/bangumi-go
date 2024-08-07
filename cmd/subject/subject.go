@@ -45,6 +45,36 @@ func GetUserEpisodeCollections(token, username string, subjectId, offset, limit,
 	return userEpisodeCollections, err
 }
 
+// status: wish, done, watch, onhold, dropped
+// ep_status and vol_status are only used for book
+func PostCollection(token string, subjectId int, status string, tags []string, comment string, rate int, private bool) error {
+	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d", subjectId)
+	requestBody := struct {
+		Type    int      `json:"type"`
+		Rate    int      `json:"rate"`
+		Comment string   `json:"comment"`
+		Private bool     `json:"private"`
+		Tags    []string `json:"tags"`
+	}{
+		Type:    api.CollectionType[status],
+		Rate:    rate,
+		Comment: comment,
+		Private: private,
+		Tags:    tags,
+	}
+	jsonBytes, err := json.Marshal(requestBody)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to marshal request body: %v", err))
+		return err
+	}
+	err = api.PostRequest(url, token, jsonBytes, nil)
+	if err != nil {
+	} else {
+		slog.Info(fmt.Sprintf("Successfully set subject %d to %s", subjectId, status))
+	}
+	return err
+}
+
 // status: delete, wish, done, dropped
 func PutEpisode(token string, episodeId int, status string) error {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/-/episodes/%d", episodeId)
