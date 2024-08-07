@@ -1,6 +1,7 @@
 package subject
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -43,7 +44,7 @@ func GetUserEpisodeCollections(token, username string, subjectId, offset, limit,
 	return userEpisodeCollections, err
 }
 
-// status: uncollected, wish, done, dropped
+// status: delete, wish, done, dropped
 func PutEpisode(token string, episodeId int, status string) error {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/-/episodes/%d", episodeId)
 	typeInt := api.EpisodeCollectionType[status]
@@ -57,6 +58,26 @@ func PutEpisode(token string, episodeId int, status string) error {
 	return err
 }
 
-func PatchEpisodes(token string, subjectId int, episodeIds []int) {
-
+// status: delete, wish, done, dropped
+func PatchEpisodes(token string, subjectId int, episodeIds []int, status string) error {
+	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d/episodes", subjectId)
+	slog.Info(fmt.Sprintf("PATCH to %v", url))
+	typeInt := api.EpisodeCollectionType[status]
+	requestBody := struct {
+		EpisodeID []int `json:"episode_id"`
+		Type      int   `json:"type"`
+	}{
+		EpisodeID: episodeIds,
+		Type:      typeInt,
+	}
+	jsonBytes, err := json.Marshal(requestBody)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to marshal request body: %v", err))
+		return err
+	}
+	err = api.PatchRequest(url, token, jsonBytes, nil)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to patch episodes: %v", err))
+	}
+	return err
 }

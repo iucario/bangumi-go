@@ -65,7 +65,7 @@ func sendRequest(req *http.Request, data interface{}) error {
 
 	bodyBytes, _ := io.ReadAll(res.Body)
 	bodyString := string(bodyBytes)
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode >= 300 {
 		slog.Error(fmt.Sprintf("status code: %d, response: %s", res.StatusCode, bodyString))
 		return fmt.Errorf(fmt.Sprintf("[error] status code: %d, response: %s", res.StatusCode, bodyString))
 	}

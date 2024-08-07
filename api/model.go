@@ -19,10 +19,10 @@ var SubjectType map[string]int = map[string]int{
 }
 
 var EpisodeCollectionType map[string]int = map[string]int{
-	"uncollected": 0,
-	"wish":        1,
-	"done":        2,
-	"dropped":     3,
+	"delete":  0,
+	"wish":    1,
+	"done":    2,
+	"dropped": 3,
 }
 
 type UserCollections struct {
