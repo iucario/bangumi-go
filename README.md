@@ -12,6 +12,8 @@ Bangumi CLI and TUI in Golang
   Help about any command
 - `list`
   List collection
+- `sub`
+  Subject/Collection actions
 - `version`
   Print the version number of bgm-cli
 - `ui`
