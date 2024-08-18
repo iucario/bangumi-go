@@ -22,7 +22,7 @@ var uiCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		credential, _ := auth.LoadCredential()
 		userInfo, err := auth.GetUserInfo(credential.AccessToken)
-		auth.Check(err)
+		auth.AbortOnError(err)
 		userCollections, _ := list.ListUserCollection(credential.AccessToken, userInfo.Username, "all", "watch", 20, 0)
 		logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 		if err != nil {

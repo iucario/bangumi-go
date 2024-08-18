@@ -96,16 +96,16 @@ func GetAccessToken(code string) {
 	req, err := http.NewRequest("POST", API, bytes.NewBuffer(data))
 	req.Header.Set("User-Agent", UserAgent)
 	req.Header.Set("Content-Type", "application/json")
-	Check(err)
+	AbortOnError(err)
 	defer req.Body.Close()
 
 	client := &http.Client{}
 	res, err := client.Do(req)
-	Check(err)
+	AbortOnError(err)
 
 	credential := Credential{}
 	err = json.NewDecoder(res.Body).Decode(&credential)
-	Check(err)
+	AbortOnError(err)
 
 	SaveCredential(credential)
 	fmt.Println(res.StatusCode)

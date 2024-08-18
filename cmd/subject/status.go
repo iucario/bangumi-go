@@ -31,7 +31,7 @@ var statusCmd = &cobra.Command{
 
 		credential, _ := auth.LoadCredential()
 		userInfo, err := auth.GetUserInfo(credential.AccessToken)
-		auth.Check(err)
+		auth.AbortOnError(err)
 		collection, _ := GetUserSubjectCollection(credential.AccessToken, userInfo.Username, subjectId)
 
 		modifyCollection(credential.AccessToken, subjectId, status, tags, rate, comment, private, collection)

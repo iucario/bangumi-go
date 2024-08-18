@@ -38,23 +38,23 @@ func GetStatus(accessToken string) bool {
 	req, err := http.NewRequest("POST", api, nil)
 	req.Header.Set("User-Agent", UserAgent)
 	req.Header.Set("Content-Type", "application/json")
-	Check(err)
+	AbortOnError(err)
 
 	client := &http.Client{}
 	res, err := client.Do(req)
-	Check(err)
+	AbortOnError(err)
 
 	if res.StatusCode == 200 {
 		fmt.Println("Auth status: OK")
 		status := AuthStatus{}
 		err = json.NewDecoder(res.Body).Decode(&status)
-		Check(err)
+		AbortOnError(err)
 		log.Println("Auth status: OK", status)
 		return true
 	}
 	fmt.Println("Auth status: Failed")
 	body, err := io.ReadAll(res.Body)
-	Check(err)
+	AbortOnError(err)
 
 	fmt.Println("Response Body:", string(body))
 

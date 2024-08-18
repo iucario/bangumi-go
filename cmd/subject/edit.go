@@ -25,7 +25,7 @@ var editCmd = &cobra.Command{
 		slog.Info(fmt.Sprintf("edit subjectId=%d watch=%d\n", subjectId, watch))
 		credential, _ := auth.LoadCredential()
 		userInfo, err := auth.GetUserInfo(credential.AccessToken)
-		auth.Check(err)
+		auth.AbortOnError(err)
 
 		if watch == -1 {
 			WatchNextEpisode(credential.AccessToken, userInfo.Username, subjectId)

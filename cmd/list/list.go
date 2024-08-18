@@ -18,7 +18,7 @@ var listCmd = &cobra.Command{
 		collectionType, _ := cmd.Flags().GetString("collection")
 		credential, _ := auth.LoadCredential()
 		userInfo, err := auth.GetUserInfo(credential.AccessToken)
-		auth.Check(err)
+		auth.AbortOnError(err)
 		watchCollections, _ := ListUserCollection(credential.AccessToken, userInfo.Username, subjectType, collectionType, 30, 0)
 		slog.Info(fmt.Sprintf("collections in watching: %d\n", watchCollections.Total))
 

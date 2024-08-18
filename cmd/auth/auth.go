@@ -62,14 +62,14 @@ func init() {
 // Save credential to file
 func SaveCredential(credential Credential) {
 	err := os.MkdirAll(ConfigDir, 0755)
-	Check(err)
+	AbortOnError(err)
 
 	jsonBytes, err := json.Marshal(credential)
-	Check(err)
+	AbortOnError(err)
 
 	credentialPath := fmt.Sprintf("%s/credential.json", ConfigDir)
 	err = os.WriteFile(credentialPath, jsonBytes, 0644)
-	Check(err)
+	AbortOnError(err)
 }
 
 // Load credential from file
@@ -89,8 +89,10 @@ func LoadCredential() (Credential, error) {
 	return credential, nil
 }
 
-func Check(err error) {
+func AbortOnError(err error) {
 	if err != nil {
-		panic(err)
+		fmt.Println(err.Error())
+		slog.Error(err.Error())
+		os.Exit(1)
 	}
 }
