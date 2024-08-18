@@ -12,6 +12,7 @@ import (
 	"github.com/iucario/bangumi-go/cmd"
 	"github.com/iucario/bangumi-go/cmd/auth"
 	"github.com/iucario/bangumi-go/cmd/list"
+	"github.com/iucario/bangumi-go/util"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 )
@@ -42,6 +43,44 @@ func init() {
 func TuiMain(userInfo auth.UserInfo, userCollections api.UserCollections) {
 	app := tview.NewApplication()
 
+	pages := tview.NewPages()
+
+	pages.AddAndSwitchToPage("help", createHelpPage(), true)
+
+	pages.AddPage("home", createHomePage(userCollections), true, false)
+
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case '?':
+				pages.SwitchToPage("help")
+			case '1':
+				pages.SwitchToPage("home")
+			}
+		}
+		return event
+	})
+
+	if err := app.SetRoot(pages, true).SetFocus(pages).Run(); err != nil {
+		panic(err)
+	}
+}
+
+func createHelpPage() *tview.TextView {
+	text := `Welcome to Bangumi CLI UI
+	Shortcuts:
+
+	1: Go to Home
+	?: Show this help
+	j/up: Move up
+	k/down: Move down
+	`
+	welcomePage := tview.NewTextView().SetText(text)
+	return welcomePage
+}
+
+func createHomePage(userCollections api.UserCollections) *tview.Flex {
 	watchList := createWatchList(userCollections)
 	collectionView := createCollectionView(userCollections)
 
@@ -54,12 +93,10 @@ func TuiMain(userInfo auth.UserInfo, userCollections api.UserCollections) {
 		}
 	})
 
-	flex := tview.NewFlex().
+	homePage := tview.NewFlex().
 		AddItem(watchList, 0, 1, true).
 		AddItem(collectionView, 0, 2, false)
-	if err := app.SetRoot(flex, true).SetFocus(flex).Run(); err != nil {
-		panic(err)
-	}
+	return homePage
 }
 
 func createWatchList(userCollections api.UserCollections) *tview.List {
@@ -78,6 +115,9 @@ func createWatchList(userCollections api.UserCollections) *tview.List {
 				watchList.SetCurrentItem(watchList.GetCurrentItem() + 1)
 			case 'k':
 				watchList.SetCurrentItem(watchList.GetCurrentItem() - 1)
+			case 'e':
+				slog.Info("Edit")
+
 			}
 		}
 		return event
@@ -107,4 +147,25 @@ func createCollectionText(collection api.UserSubjectCollection) string {
 	text += fmt.Sprintf("On Aired: %s\n", collection.Subject.Date)
 	text += fmt.Sprintf("User Score: %.1f\n", collection.Subject.Score)
 	return text
+}
+
+func createForm(collection api.UserSubjectCollection) *tview.Form {
+	statusList := []string{"wish", "watch", "done", "onhold", "dropped"}
+	initStatus := util.IndexOfString(statusList, collection.GetStatus())
+	initTags := collection.GetTags()
+
+	form := tview.NewForm()
+	form.SetBorder(true).SetTitle("Edit Collection").SetTitleAlign(tview.AlignLeft)
+	form.AddDropDown("Status", statusList, initStatus, nil)
+	form.AddInputField("Tags", initTags, 20, nil, nil)
+	form.AddInputField("Rate", util.Uint32ToString(collection.Rate), 2, nil, nil)
+	form.AddInputField("Comment", collection.Comment, 20, nil, nil)
+	form.AddCheckbox("Private", collection.Private, nil)
+	form.AddButton("Save", func() {
+		slog.Info("Save button clicked")
+	})
+	form.AddButton("Cancel", func() {
+		slog.Info("Cancel button clicked")
+	})
+	return form
 }
