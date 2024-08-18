@@ -1,6 +1,9 @@
 package api
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 var CollectionType map[string]int = map[string]int{
 	"wish":    1,
@@ -148,4 +151,16 @@ type Count struct {
 	Field8  uint32
 	Field9  uint32
 	Field10 uint32
+}
+
+func (c *UserSubjectCollection) GetStatus() string {
+	return CollectionTypeRev[int(c.Type)]
+}
+
+func (c *UserSubjectCollection) GetSubjectType() string {
+	return SubjectTypeRev[int(c.SubjectType)]
+}
+
+func (c *UserSubjectCollection) GetTags() string {
+	return strings.Join(c.Tags, " ")
 }
