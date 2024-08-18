@@ -26,7 +26,7 @@ var uiCmd = &cobra.Command{
 		userCollections, _ := list.ListUserCollection(credential.AccessToken, userInfo.Username, "all", "watch", 20, 0)
 		logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 		if err != nil {
-			slog.Error("Failed to open log file: %v", err)
+			slog.Error(fmt.Sprintf("Failed to open log file: %v", err))
 		}
 		defer logFile.Close()
 		log.SetOutput(logFile)
@@ -49,7 +49,7 @@ func TuiMain(userInfo auth.UserInfo, userCollections api.UserCollections) {
 	watchList.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
 		if index >= 0 && index < len(userCollections.Data) {
 			collection := userCollections.Data[index]
-			slog.Info("Selected %s", collection.Subject.Name)
+			slog.Info(fmt.Sprintf("Selected %s", collection.Subject.Name))
 			collectionView.SetText(createCollectionText(collection))
 		}
 	})
