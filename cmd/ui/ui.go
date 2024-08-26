@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
@@ -12,6 +13,7 @@ import (
 	"github.com/iucario/bangumi-go/cmd"
 	"github.com/iucario/bangumi-go/cmd/auth"
 	"github.com/iucario/bangumi-go/cmd/list"
+	"github.com/iucario/bangumi-go/cmd/subject"
 	"github.com/iucario/bangumi-go/util"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
@@ -47,7 +49,7 @@ func TuiMain(userInfo auth.UserInfo, userCollections api.UserCollections) {
 
 	pages.AddAndSwitchToPage("help", createHelpPage(), true)
 
-	pages.AddPage("home", createHomePage(userCollections), true, false)
+	pages.AddPage("home", createHomePage(app, userCollections), true, false)
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
@@ -71,18 +73,26 @@ func createHelpPage() *tview.TextView {
 	text := `Welcome to Bangumi CLI UI
 	Shortcuts:
 
+	[Navigation]
 	1: Go to Home
 	?: Show this help
 	j/up: Move up
 	k/down: Move down
+
+	[Collection]
+	e: Edit collection
+	v: View collection
 	`
 	welcomePage := tview.NewTextView().SetText(text)
 	return welcomePage
 }
 
-func createHomePage(userCollections api.UserCollections) *tview.Flex {
+func createHomePage(app *tview.Application, userCollections api.UserCollections) *tview.Flex {
 	watchList := createWatchList(userCollections)
 	collectionView := createCollectionView(userCollections)
+
+	pages := tview.NewPages()
+	pages.AddAndSwitchToPage("view", collectionView, true)
 
 	// Update subject info when an item is selected
 	watchList.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
@@ -95,8 +105,35 @@ func createHomePage(userCollections api.UserCollections) *tview.Flex {
 
 	homePage := tview.NewFlex().
 		AddItem(watchList, 0, 1, true).
-		AddItem(collectionView, 0, 2, false)
+		AddItem(pages, 0, 2, false)
+
+	homePage.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case 'e':
+				slog.Info("edit")
+				index := watchList.GetCurrentItem()
+				pages.AddAndSwitchToPage("edit", createEditPage(userCollections.Data[index]), true)
+				_, frontPage := pages.GetFrontPage()
+				app.SetFocus(frontPage)
+			case 'v':
+				slog.Info("view")
+				pages.SwitchToPage("view")
+				app.SetFocus(watchList)
+			}
+		}
+		return event
+	})
+
 	return homePage
+}
+
+func createEditPage(collection api.UserSubjectCollection) *tview.Flex {
+	form := createForm(collection)
+	editPage := tview.NewFlex().
+		AddItem(form, 0, 1, true)
+	return editPage
 }
 
 func createWatchList(userCollections api.UserCollections) *tview.List {
@@ -115,9 +152,6 @@ func createWatchList(userCollections api.UserCollections) *tview.List {
 				watchList.SetCurrentItem(watchList.GetCurrentItem() + 1)
 			case 'k':
 				watchList.SetCurrentItem(watchList.GetCurrentItem() - 1)
-			case 'e':
-				slog.Info("Edit")
-
 			}
 		}
 		return event
@@ -150,22 +184,57 @@ func createCollectionText(collection api.UserSubjectCollection) string {
 }
 
 func createForm(collection api.UserSubjectCollection) *tview.Form {
+	// FIXME: inputs 'e' when entering edit mode. Change focus or something.
+	// FIXME: should disable shortcuts when in form
 	statusList := []string{"wish", "watch", "done", "onhold", "dropped"}
-	initStatus := util.IndexOfString(statusList, collection.GetStatus())
+	status := util.IndexOfString(statusList, collection.GetStatus())
 	initTags := collection.GetTags()
 
 	form := tview.NewForm()
 	form.SetBorder(true).SetTitle("Edit Collection").SetTitleAlign(tview.AlignLeft)
-	form.AddDropDown("Status", statusList, initStatus, nil)
-	form.AddInputField("Tags", initTags, 20, nil, nil)
-	form.AddInputField("Rate", util.Uint32ToString(collection.Rate), 2, nil, nil)
-	form.AddInputField("Comment", collection.Comment, 20, nil, nil)
-	form.AddCheckbox("Private", collection.Private, nil)
+	form.AddInputField("Episodes watched", util.Uint32ToString(collection.EpStatus), 5, nil, func(text string) {
+		epStatus, err := strconv.Atoi(text)
+		if err != nil {
+			slog.Error(fmt.Sprintf("invalid episode status %s", text))
+		}
+		collection.EpStatus = uint32(epStatus)
+	})
+
+	form.AddDropDown("Status", statusList, status, func(option string, optionIndex int) {
+		slog.Debug(fmt.Sprintf("selected %s", option))
+		collection.SetStatus(option)
+	})
+	form.AddInputField("Tags", initTags, 20, nil, func(text string) {
+		// TODO: validate tags
+		collection.Tags = strings.Split(text, " ")
+	})
+	form.AddInputField("Rate", util.Uint32ToString(collection.Rate), 2, nil, func(text string) {
+		rate, err := strconv.Atoi(text)
+		if err != nil {
+			slog.Error(fmt.Sprintf("invalid rate %s. Must be in [0-10]", text))
+		}
+		rate = max(0, min(10, rate))
+		collection.Rate = uint32(rate)
+	})
+	form.AddInputField("Comment", collection.Comment, 20, nil, func(text string) {
+		collection.Comment = text
+	})
+	form.AddCheckbox("Private", collection.Private, func(checked bool) {
+		collection.Private = checked
+	})
 	form.AddButton("Save", func() {
-		slog.Info("Save button clicked")
+		slog.Info("save button clicked")
+		slog.Info("posting collection...")
+		credential, err := auth.GetCredential()
+		if err != nil {
+			slog.Error("login required")
+			// TODO: display error messsage
+		}
+		subject.PostCollection(credential.AccessToken, int(collection.SubjectID), statusList[collection.Type],
+			collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
 	})
 	form.AddButton("Cancel", func() {
-		slog.Info("Cancel button clicked")
+		slog.Info("cancel button clicked")
 	})
 	return form
 }
