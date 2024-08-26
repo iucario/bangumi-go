@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -16,9 +16,9 @@ var refreshCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		err := RefreshToken()
 		if err != nil {
-			log.Fatalln("Failed to refresh token", err)
+			slog.Error(fmt.Sprintln("Failed to refresh token", err))
 		} else {
-			log.Println("Refresh token success")
+			slog.Info("Refresh token success")
 		}
 	},
 }

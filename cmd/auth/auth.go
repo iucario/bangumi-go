@@ -96,3 +96,23 @@ func AbortOnError(err error) {
 		os.Exit(1)
 	}
 }
+
+// Handle all errors and refresh token. Throw error if a login is required.
+func GetCredential() (Credential, error) {
+	credential, err := LoadCredential()
+	if err != nil {
+		slog.Error("credential file does not exist")
+		return Credential{}, err
+	}
+	statusFlag := GetStatus(credential.AccessToken)
+	if statusFlag {
+		return credential, nil
+	}
+
+	err = RefreshToken()
+	if err != nil {
+		return Credential{}, err
+	}
+	credential, _ = LoadCredential()
+	return credential, nil
+}

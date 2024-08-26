@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -14,13 +14,17 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show auth status",
 	Run: func(cmd *cobra.Command, args []string) {
-
 		credential, err := LoadCredential()
 		if err != nil {
 			fmt.Println("No credential found.")
 			return
 		}
-		GetStatus(credential.AccessToken)
+		statusFlag := GetStatus(credential.AccessToken)
+		if statusFlag {
+			fmt.Println("Auth status: OK")
+		} else {
+			fmt.Println("Auth status: Failed")
+		}
 	},
 }
 
@@ -45,18 +49,18 @@ func GetStatus(accessToken string) bool {
 	AbortOnError(err)
 
 	if res.StatusCode == 200 {
-		fmt.Println("Auth status: OK")
+		slog.Info("auth status: OK")
 		status := AuthStatus{}
 		err = json.NewDecoder(res.Body).Decode(&status)
 		AbortOnError(err)
-		log.Println("Auth status: OK", status)
+		slog.Info(fmt.Sprintln("auth status: OK", status))
 		return true
 	}
-	fmt.Println("Auth status: Failed")
+	slog.Warn("auth status: Failed")
 	body, err := io.ReadAll(res.Body)
 	AbortOnError(err)
 
-	fmt.Println("Response Body:", string(body))
+	slog.Info(fmt.Sprintln("response Body:", string(body)))
 
 	return false
 }

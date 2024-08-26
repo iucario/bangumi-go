@@ -157,6 +157,10 @@ func (c *UserSubjectCollection) GetStatus() string {
 	return CollectionTypeRev[int(c.Type)]
 }
 
+func (c *UserSubjectCollection) SetStatus(status string) {
+	c.Type = uint32(CollectionType[status])
+}
+
 func (c *UserSubjectCollection) GetSubjectType() string {
 	return SubjectTypeRev[int(c.SubjectType)]
 }
