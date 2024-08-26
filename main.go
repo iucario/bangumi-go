@@ -18,7 +18,9 @@ func main() {
 		slog.Error(fmt.Sprintf("Failed to open log file: %v", err))
 	}
 	defer logFile.Close()
-	logger := slog.New(slog.NewJSONHandler(logFile, nil))
+	logger := slog.New(slog.NewJSONHandler(logFile, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
 	slog.SetDefault(logger)
 
 	cmd.Execute()
