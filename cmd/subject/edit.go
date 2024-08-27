@@ -30,7 +30,7 @@ var editCmd = &cobra.Command{
 		if watch == -1 {
 			WatchNextEpisode(credential.AccessToken, userInfo.Username, subjectId)
 		} else {
-			WatchToEpisode(credential.AccessToken, userInfo.Username, subjectId, watch)
+			WatchToEpisode(credential.AccessToken, subjectId, watch)
 		}
 	},
 }
@@ -53,7 +53,7 @@ func WatchNextEpisode(token string, username string, subjectId int) {
 		slog.Error(fmt.Sprintf("No more episodes to watch. Current: %d, Total: %d\n", epStatus, totalEps))
 	}
 
-	userEpisodeCollections, err := GetUserEpisodeCollections(token, username, subjectId, 0, 100, 0)
+	userEpisodeCollections, err := GetUserEpisodeCollections(token, subjectId, 0, 100, 0)
 	episode, err := getCurrentEpisode(userEpisodeCollections.Data)
 	if err != nil {
 		slog.Error(fmt.Sprintf("%v\n", err))
@@ -65,8 +65,8 @@ func WatchNextEpisode(token string, username string, subjectId int) {
 }
 
 // Mark 1 to n episodes as done, the rest as delete
-func WatchToEpisode(token string, username string, subjectId int, episodeNum int) {
-	userEpisodeCollections, err := GetUserEpisodeCollections(token, username, subjectId, 0, 100, 0)
+func WatchToEpisode(token string, subjectId int, episodeNum int) {
+	userEpisodeCollections, err := GetUserEpisodeCollections(token, subjectId, 0, 100, 0)
 	if err != nil {
 		slog.Error(fmt.Sprintf("%v\n", err))
 	}

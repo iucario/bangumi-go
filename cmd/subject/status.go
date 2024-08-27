@@ -117,7 +117,7 @@ func printSubjectStatus(token, username string, subjectId int, collection api.Us
 	fmt.Printf("Your Tags: %s\n", tags)
 	fmt.Printf("Your Rating: %d\n", collection.Rate)
 
-	userEpisodes, _ := GetUserEpisodeCollections(token, username, subjectId, 0, 100, 0)
+	userEpisodes, _ := GetUserEpisodeCollections(token, subjectId, 0, 100, 0)
 	status := getEpisodeStatus(&userEpisodes.Data)
 	printEpisodeStatus(status)
 }

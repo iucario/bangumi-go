@@ -35,7 +35,7 @@ func GetUserSubjectCollection(token string, username string, subjectId int) (api
 	return userSubjectCollection, err
 }
 
-func GetUserEpisodeCollections(token, username string, subjectId, offset, limit, episode_type int) (api.UserEpisodeCollections, error) {
+func GetUserEpisodeCollections(token string, subjectId, offset, limit, episode_type int) (api.UserEpisodeCollections, error) {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d/episodes", subjectId)
 	userEpisodeCollections := api.UserEpisodeCollections{}
 	err := api.AuthenticatedGetRequest(url, token, &userEpisodeCollections)
