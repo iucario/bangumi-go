@@ -232,6 +232,7 @@ func createForm(collection api.UserSubjectCollection) *tview.Form {
 		}
 		subject.PostCollection(credential.AccessToken, int(collection.SubjectID), statusList[collection.Type-1],
 			collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
+		subject.WatchToEpisode(credential.AccessToken, int(collection.SubjectID), int(collection.EpStatus))
 	})
 	form.AddButton("Cancel", func() {
 		slog.Info("cancel button clicked")
