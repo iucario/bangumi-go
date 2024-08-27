@@ -186,7 +186,7 @@ func createCollectionText(collection api.UserSubjectCollection) string {
 func createForm(collection api.UserSubjectCollection) *tview.Form {
 	// FIXME: inputs 'e' when entering edit mode. Change focus or something.
 	// FIXME: should disable shortcuts when in form
-	statusList := []string{"wish", "watch", "done", "onhold", "dropped"}
+	statusList := []string{"wish", "done", "watch", "onhold", "dropped"}
 	status := util.IndexOfString(statusList, collection.GetStatus())
 	initTags := collection.GetTags()
 
@@ -230,7 +230,7 @@ func createForm(collection api.UserSubjectCollection) *tview.Form {
 			slog.Error("login required")
 			// TODO: display error messsage
 		}
-		subject.PostCollection(credential.AccessToken, int(collection.SubjectID), statusList[collection.Type],
+		subject.PostCollection(credential.AccessToken, int(collection.SubjectID), statusList[collection.Type-1],
 			collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
 	})
 	form.AddButton("Cancel", func() {
