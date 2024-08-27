@@ -38,7 +38,7 @@ var statusCmd = &cobra.Command{
 		subject := GetSubjectInfo(subjectId)
 		fmt.Printf("%d\n%s\n%s\n", subject.ID, subject.NameCn, subject.Name)
 
-		printSubjectStatus(credential.AccessToken, userInfo.Username, subjectId, collection)
+		printSubjectStatus(credential.AccessToken, subjectId, collection)
 	},
 }
 
@@ -110,7 +110,7 @@ func validateStatus(status string) bool {
 	return status == "wish" || status == "done" || status == "watch" || status == "onhold" || status == "dropped"
 }
 
-func printSubjectStatus(token, username string, subjectId int, collection api.UserSubjectCollection) {
+func printSubjectStatus(token string, subjectId int, collection api.UserSubjectCollection) {
 	tags := strings.Join(collection.Tags, ", ")
 	fmt.Printf("Status: %s\n", api.CollectionTypeRev[int(collection.Type)])
 	fmt.Printf("Subjcet type: %s\n", api.SubjectTypeRev[int(collection.Subject.Type)])
