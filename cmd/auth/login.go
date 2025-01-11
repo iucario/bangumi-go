@@ -1,9 +1,7 @@
 package auth
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
@@ -12,6 +10,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/iucario/bangumi-go/api"
 	"github.com/spf13/cobra"
 )
 
@@ -21,15 +20,15 @@ var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Login to https://bangumi.tv",
 	Run: func(cmd *cobra.Command, args []string) {
-		credential, err := LoadCredential()
+		credential, err := api.LoadCredential(ConfigDir)
 		if err != nil {
 			// Token does not exist, login from browser
 			BrowserLogin()
-		} else if GetStatus(credential.AccessToken) {
+		} else if api.GetStatus(credential.AccessToken) {
 			fmt.Println("Token is still valid")
 			return
 		}
-		err = RefreshToken()
+		err = api.RefreshToken(ConfigDir)
 		if err != nil {
 			BrowserLogin()
 		}
@@ -41,7 +40,7 @@ func BrowserLogin() {
 	apiAuth := "https://bgm.tv/oauth/authorize"
 	responseType := "code"
 	host := "http://localhost:9090/auth"
-	LOGIN_URL := fmt.Sprintf("%s?client_id=%s&response_type=%s&redirect_uri=%s", apiAuth, ClientId, responseType, host)
+	LOGIN_URL := fmt.Sprintf("%s?client_id=%s&response_type=%s&redirect_uri=%s", apiAuth, api.ClientId, responseType, host)
 
 	openBrowser(LOGIN_URL)
 	fmt.Println("If your browser is not opened automatically. Manually open this URL in browser and login:")
@@ -58,18 +57,18 @@ func Start(wg *sync.WaitGroup) {
 	http.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-ctxShutdown.Done():
-			fmt.Println("Sorry: Shuting down ...")
+			fmt.Println("Context Shuting down ...")
 			return
 		default:
 		}
 		code := r.URL.Query().Get("code")
 		if code != "" {
-			GetAccessToken(code)
+			api.GetAccessToken(code, ConfigDir)
 			// shutdown
 			cancel()
 			err := srv.Shutdown(context.Background())
 			if err != nil {
-				log.Println("server.Shutdown:", err)
+				slog.Info("server.Shutdown:", "Error", err)
 			}
 		} else {
 			fmt.Fprintln(w, "Hi") // Server HTML page to fetch token and return to server at /auth
@@ -82,33 +81,6 @@ func Start(wg *sync.WaitGroup) {
 			slog.Error(fmt.Sprintf("ListenAndServe(): %v", err))
 		}
 	}()
-
-}
-
-func GetAccessToken(code string) {
-	data := []byte(fmt.Sprintf(`{
-		"grant_type": "%s",
-		"client_id": "%s",
-		"client_secret": "%s",
-		"code": "%s",
-		"redirect_uri": "http://localhost:9090/auth"
-	}`, GrantType, ClientId, AppSecret, code))
-	req, err := http.NewRequest("POST", API, bytes.NewBuffer(data))
-	req.Header.Set("User-Agent", UserAgent)
-	req.Header.Set("Content-Type", "application/json")
-	AbortOnError(err)
-	defer req.Body.Close()
-
-	client := &http.Client{}
-	res, err := client.Do(req)
-	AbortOnError(err)
-
-	credential := Credential{}
-	err = json.NewDecoder(res.Body).Decode(&credential)
-	AbortOnError(err)
-
-	SaveCredential(credential)
-	fmt.Println(res.StatusCode)
 }
 
 func openBrowser(url string) {

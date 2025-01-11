@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/iucario/bangumi-go/api"
-	"github.com/iucario/bangumi-go/cmd/auth"
 	"github.com/spf13/cobra"
 )
 
@@ -29,9 +28,9 @@ var statusCmd = &cobra.Command{
 		comment, _ := cmd.Flags().GetString("comment")
 		private, _ := cmd.Flags().GetBool("private")
 
-		credential, _ := auth.LoadCredential()
-		userInfo, err := auth.GetUserInfo(credential.AccessToken)
-		auth.AbortOnError(err)
+		credential, _ := api.LoadCredential(ConfigDir)
+		userInfo, err := api.GetUserInfo(credential.AccessToken)
+		api.AbortOnError(err)
 		collection, _ := GetUserSubjectCollection(credential.AccessToken, userInfo.Username, subjectId)
 
 		modifyCollection(credential.AccessToken, subjectId, status, tags, rate, comment, private, collection)

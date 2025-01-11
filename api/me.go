@@ -1,4 +1,4 @@
-package auth
+package api
 
 import (
 	"encoding/json"
@@ -31,9 +31,9 @@ func (u UserInfo) String() string {
 }
 
 func GetUserInfo(accessToken string) (UserInfo, error) {
-	api := "https://api.bgm.tv/v0/me"
+	API := "https://api.bgm.tv/v0/me"
 
-	req, err := http.NewRequest("GET", api, nil)
+	req, err := http.NewRequest("GET", API, nil)
 	if err != nil {
 		return UserInfo{}, err
 	}

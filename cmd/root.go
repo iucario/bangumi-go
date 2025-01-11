@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/iucario/bangumi-go/util"
 	"github.com/spf13/cobra"
 )
+
+var ConfigDir string
 
 var RootCmd = &cobra.Command{
 	Use:   "bgm",
@@ -32,4 +35,5 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	ConfigDir = util.GetConfigDir()
 }

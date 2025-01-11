@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/iucario/bangumi-go/api"
-	"github.com/iucario/bangumi-go/cmd/auth"
 	"github.com/spf13/cobra"
 )
 
@@ -23,9 +22,9 @@ var editCmd = &cobra.Command{
 			return
 		}
 		slog.Info(fmt.Sprintf("edit subjectId=%d watch=%d\n", subjectId, watch))
-		credential, _ := auth.LoadCredential()
-		userInfo, err := auth.GetUserInfo(credential.AccessToken)
-		auth.AbortOnError(err)
+		credential, _ := api.LoadCredential(ConfigDir)
+		userInfo, err := api.GetUserInfo(credential.AccessToken)
+		api.AbortOnError(err)
 
 		if watch == -1 {
 			WatchNextEpisode(credential.AccessToken, userInfo.Username, subjectId)
@@ -54,12 +53,19 @@ func WatchNextEpisode(token string, username string, subjectId int) {
 	}
 
 	userEpisodeCollections, err := GetUserEpisodeCollections(token, subjectId, 0, 100, 0)
+	if err != nil {
+		slog.Error(fmt.Sprintf("%v\n", err))
+	}
 	episode, err := getCurrentEpisode(userEpisodeCollections.Data)
 	if err != nil {
 		slog.Error(fmt.Sprintf("%v\n", err))
 	}
 
-	PutEpisode(token, int(episode.Episode.Id), "done")
+	err = PutEpisode(token, int(episode.Episode.Id), "done")
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to mark episode as done: %v\n", err))
+		return
+	}
 	epName := episode.Episode.NameCn
 	slog.Info(fmt.Sprintf("Marked as done: %s episode %d. %s\n", subjectName, episode.Episode.Id, epName))
 }
@@ -85,14 +91,20 @@ func WatchToEpisode(token string, subjectId int, episodeNum int) {
 		}
 	}
 
-	PatchEpisodes(token, subjectId, watchList, "done")
-	PatchEpisodes(token, subjectId, deleteList, "delete")
-
+	err = PatchEpisodes(token, subjectId, watchList, "done")
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to mark episodes as done: %v\n", err))
+		return
+	}
+	err = PatchEpisodes(token, subjectId, deleteList, "delete")
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to delete episodes: %v\n", err))
+		return
+	}
 }
 
 // Return the first episode that is not done
 func getCurrentEpisode(userEpisodeCollection []api.UserEpisodeCollection) (api.UserEpisodeCollection, error) {
-
 	doneType := api.EpisodeCollectionType["done"]
 	for _, userEpisode := range userEpisodeCollection {
 		if userEpisode.Type != doneType {

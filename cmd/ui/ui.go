@@ -11,7 +11,6 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd"
-	"github.com/iucario/bangumi-go/cmd/auth"
 	"github.com/iucario/bangumi-go/cmd/list"
 	"github.com/iucario/bangumi-go/cmd/subject"
 	"github.com/iucario/bangumi-go/util"
@@ -19,15 +18,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var ConfigDir string
+
 var uiCmd = &cobra.Command{
 	Use:   "ui",
 	Short: "Run terminal UI",
 	Run: func(cmd *cobra.Command, args []string) {
-		credential, _ := auth.LoadCredential()
-		userInfo, err := auth.GetUserInfo(credential.AccessToken)
-		auth.AbortOnError(err)
+		credential, _ := api.LoadCredential(ConfigDir)
+		userInfo, err := api.GetUserInfo(credential.AccessToken)
+		api.AbortOnError(err)
 		userCollections, _ := list.ListUserCollection(credential.AccessToken, userInfo.Username, "all", "watch", 20, 0)
-		logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Failed to open log file: %v", err))
 		}
@@ -40,9 +41,10 @@ var uiCmd = &cobra.Command{
 
 func init() {
 	cmd.RootCmd.AddCommand(uiCmd)
+	ConfigDir = cmd.ConfigDir
 }
 
-func TuiMain(userInfo auth.UserInfo, userCollections api.UserCollections) {
+func TuiMain(userInfo api.UserInfo, userCollections api.UserCollections) {
 	app := tview.NewApplication()
 
 	pages := tview.NewPages()
@@ -225,13 +227,16 @@ func createForm(collection api.UserSubjectCollection) *tview.Form {
 	form.AddButton("Save", func() {
 		slog.Info("save button clicked")
 		slog.Info("posting collection...")
-		credential, err := auth.GetCredential()
+		credential, err := api.GetCredential(ConfigDir)
 		if err != nil {
 			slog.Error("login required")
 			// TODO: display error messsage
 		}
-		subject.PostCollection(credential.AccessToken, int(collection.SubjectID), statusList[collection.Type-1],
+		err = subject.PostCollection(credential.AccessToken, int(collection.SubjectID), statusList[collection.Type-1],
 			collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
+		}
 		subject.WatchToEpisode(credential.AccessToken, int(collection.SubjectID), int(collection.EpStatus))
 	})
 	form.AddButton("Cancel", func() {

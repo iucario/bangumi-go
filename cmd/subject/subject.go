@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var ConfigDir string
+
 var subCmd = &cobra.Command{
 	Use:   "sub",
 	Short: "Subject actions",
@@ -23,6 +25,7 @@ bgm sub edit <subject_id> [-w <episode number>]`)
 
 func init() {
 	cmd.RootCmd.AddCommand(subCmd)
+	ConfigDir = cmd.ConfigDir
 }
 
 func GetUserSubjectCollection(token string, username string, subjectId int) (api.UserSubjectCollection, error) {

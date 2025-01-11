@@ -18,3 +18,20 @@ Bangumi CLI and TUI in Golang
   Print the version number of bgm-cli
 - `ui`
   Start terminal UI
+
+## Development
+
+Lint
+
+```bash
+gofumpt -w .
+golangci-lint run
+```
+
+CLI
+
+`go run . help`
+
+UI
+
+`go run . ui`

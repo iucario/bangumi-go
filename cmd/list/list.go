@@ -6,9 +6,10 @@ import (
 
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd"
-	"github.com/iucario/bangumi-go/cmd/auth"
 	"github.com/spf13/cobra"
 )
+
+var ConfigDir string
 
 var listCmd = &cobra.Command{
 	Use:   "list",
@@ -16,9 +17,9 @@ var listCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		subjectType, _ := cmd.Flags().GetString("subject")
 		collectionType, _ := cmd.Flags().GetString("collection")
-		credential, _ := auth.LoadCredential()
-		userInfo, err := auth.GetUserInfo(credential.AccessToken)
-		auth.AbortOnError(err)
+		credential, _ := api.LoadCredential(ConfigDir)
+		userInfo, err := api.GetUserInfo(credential.AccessToken)
+		api.AbortOnError(err)
 		watchCollections, _ := ListUserCollection(credential.AccessToken, userInfo.Username, subjectType, collectionType, 30, 0)
 		slog.Info(fmt.Sprintf("collections in watching: %d\n", watchCollections.Total))
 
@@ -27,16 +28,6 @@ var listCmd = &cobra.Command{
 			fmt.Printf("%d. %d/%d %s\n", i+1, collection.EpStatus, collection.Subject.Eps, collection.Subject.NameCn)
 		}
 	},
-}
-
-func init() {
-	var subjectType string
-	var collectionType string
-	listCmd.Flags().StringVarP(&collectionType, "collection", "c", "watch",
-		"Collection type: wish, done, watch, onhold, dropped, all.")
-	listCmd.Flags().StringVarP(&subjectType, "subject", "s", "all",
-		"Subject type: book, anime, music, game, real, all.")
-	cmd.RootCmd.AddCommand(listCmd)
 }
 
 // subjectType: "anime", "real", "all".
@@ -56,7 +47,7 @@ func ListUserCollection(access_token string, username string, subjectType string
 		collectionTypeInt = api.CollectionType[collectionType]
 	}
 
-	credential, err := auth.LoadCredential()
+	credential, err := api.LoadCredential(ConfigDir)
 	if err != nil {
 		return userCollections, err
 	}
@@ -72,7 +63,6 @@ func ListUserCollection(access_token string, username string, subjectType string
 // List user bangumi collection
 // Does not include subjectType or collectionType in parameters if is set to -1.
 func ListCollection(access_token string, username string, subjectType int, collectionType int, limit int, offset int) (api.UserCollections, error) {
-
 	baseUrl := fmt.Sprintf("https://api.bgm.tv/v0/users/%s/collections", username)
 	var url string
 	switch {
@@ -91,4 +81,16 @@ func ListCollection(access_token string, username string, subjectType int, colle
 	userCollections := api.UserCollections{}
 	err := api.AuthenticatedGetRequest(url, access_token, &userCollections)
 	return userCollections, err
+}
+
+func init() {
+	var subjectType string
+	var collectionType string
+	listCmd.Flags().StringVarP(&collectionType, "collection", "c", "watch",
+		"Collection type: wish, done, watch, onhold, dropped, all.")
+	listCmd.Flags().StringVarP(&subjectType, "subject", "s", "all",
+		"Subject type: book, anime, music, game, real, all.")
+	cmd.RootCmd.AddCommand(listCmd)
+
+	ConfigDir = cmd.ConfigDir
 }
