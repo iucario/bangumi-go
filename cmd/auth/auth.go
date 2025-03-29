@@ -8,8 +8,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var ConfigDir string
-var Client *api.AuthClient
+var (
+	ConfigDir string
+	Client    *api.AuthClient
+)
 
 // authCmd represents the auth command
 var authCmd = &cobra.Command{

@@ -66,7 +66,7 @@ func (c *HTTPClient) request(req *http.Request) ([]byte, error) {
 	}
 	defer func() {
 		if err := res.Body.Close(); err != nil {
-			slog.Error("failed to close response body: %v", err)
+			slog.Error(fmt.Sprintf("failed to close response body: %v", err))
 		}
 	}()
 
@@ -83,7 +83,6 @@ func (c *HTTPClient) request(req *http.Request) ([]byte, error) {
 }
 
 func AuthenticatedGetRequest(url string, access_token string, data any) error {
-
 	req, err := buildAuthRequest("GET", url, access_token, nil)
 	if err != nil {
 		return err
