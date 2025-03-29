@@ -2,7 +2,7 @@ package auth
 
 import (
 	"fmt"
-	"log/slog"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -11,11 +11,14 @@ var refreshCmd = &cobra.Command{
 	Use:   "refresh",
 	Short: "Refresh token",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := Client.RefreshToken()
+		credential, err := Client.RefreshToken()
 		if err != nil {
-			slog.Error(fmt.Sprintln("Failed to refresh token", err))
+			fmt.Println("Failed to refresh token", err)
 		} else {
-			slog.Info("Refresh token success")
+			expiration := credential.ExpiresIn
+			expirationTime := time.Now().Add(time.Duration(expiration) * time.Second)
+			date := expirationTime.Format("2006-01-02 15:04:05")
+			fmt.Printf("Refresh token success. New token expires in %s seconds\n", date)
 		}
 	},
 }

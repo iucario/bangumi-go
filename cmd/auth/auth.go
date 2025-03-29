@@ -21,7 +21,8 @@ var authCmd = &cobra.Command{
 		fmt.Println(`Available commands: 
 bgm auth login
 bgm auth logout
-bgm auth status`)
+bgm auth status
+bgm auth refresh`)
 	},
 }
 
