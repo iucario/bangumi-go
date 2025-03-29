@@ -28,16 +28,17 @@ var statusCmd = &cobra.Command{
 		comment, _ := cmd.Flags().GetString("comment")
 		private, _ := cmd.Flags().GetBool("private")
 
-		credential, _ := api.LoadCredential()
-		userInfo, err := api.GetUserInfo(credential.AccessToken)
+		authClient := api.NewAuthClientWithConfig()
+		user := api.NewUser(authClient)
+		userInfo, err := user.GetUserInfo()
 		api.AbortOnError(err)
-		collection, _ := GetUserSubjectCollection(credential.AccessToken, userInfo.Username, subjectId)
+		collection, _ := GetUserSubjectCollection(authClient.AccessToken, userInfo.Username, subjectId)
 
-		modifyCollection(credential.AccessToken, subjectId, status, tags, rate, comment, private, collection)
+		modifyCollection(authClient.AccessToken, subjectId, status, tags, rate, comment, private, collection)
 		subject := GetSubjectInfo(subjectId)
 		fmt.Printf("%d\n%s\n%s\n", subject.ID, subject.NameCn, subject.Name)
 
-		printSubjectStatus(credential.AccessToken, subjectId, collection)
+		printSubjectStatus(authClient.AccessToken, subjectId, collection)
 	},
 }
 

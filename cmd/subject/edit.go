@@ -22,14 +22,15 @@ var editCmd = &cobra.Command{
 			return
 		}
 		slog.Info(fmt.Sprintf("edit subjectId=%d watch=%d\n", subjectId, watch))
-		credential, _ := api.LoadCredential()
-		userInfo, err := api.GetUserInfo(credential.AccessToken)
+		authClient := api.NewAuthClientWithConfig()
+		user := api.NewUser(authClient)
+		userInfo, err := user.GetUserInfo()
 		api.AbortOnError(err)
 
 		if watch == -1 {
-			WatchNextEpisode(credential.AccessToken, userInfo.Username, subjectId)
+			WatchNextEpisode(authClient.AccessToken, userInfo.Username, subjectId)
 		} else {
-			WatchToEpisode(credential.AccessToken, subjectId, watch)
+			WatchToEpisode(authClient.AccessToken, subjectId, watch)
 		}
 	},
 }

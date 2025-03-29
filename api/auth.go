@@ -16,6 +16,20 @@ func NewAuthClient(accessToken string) *AuthClient {
 	}
 }
 
+// NewAuthClientWithConfig creates a new AuthClient with the access token loaded from the credential file.
+// Returns a new AuthClient with empty access token if loading credential fails.
+func NewAuthClientWithConfig() *AuthClient {
+	if credential, err := LoadCredential(); err == nil {
+		return &AuthClient{
+			HTTPClient: *NewHTTPClient(credential.AccessToken),
+		}
+	}
+	slog.Error("failed loading credential")
+	return &AuthClient{
+		HTTPClient: *NewHTTPClient(""),
+	}
+}
+
 type AuthStatus struct {
 	AccessToken string `json:"access_token"`
 	ClientId    string `json:"client_id"`

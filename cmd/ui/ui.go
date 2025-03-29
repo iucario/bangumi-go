@@ -22,10 +22,19 @@ var uiCmd = &cobra.Command{
 	Use:   "ui",
 	Short: "Run terminal UI",
 	Run: func(cmd *cobra.Command, args []string) {
-		credential, _ := api.LoadCredential()
-		userInfo, err := api.GetUserInfo(credential.AccessToken)
+		authClient := api.NewAuthClientWithConfig()
+		user := api.NewUser(authClient)
+		userInfo, err := user.GetUserInfo()
 		api.AbortOnError(err)
-		userCollections, _ := list.ListUserCollection(credential.AccessToken, userInfo.Username, "all", "watch", 20, 0)
+
+		options := list.UserListOptions{
+			SubjectType:    "all",
+			Username:       userInfo.Username,
+			CollectionType: "all",
+			Limit:          20,
+			Offset:         0,
+		}
+		userCollections, _ := list.ListUserCollection(authClient, options)
 		logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Failed to open log file: %v", err))
@@ -41,14 +50,14 @@ func init() {
 	cmd.RootCmd.AddCommand(uiCmd)
 }
 
-func TuiMain(userInfo api.UserInfo, userCollections api.UserCollections) {
+func TuiMain(userInfo *api.UserInfo, userCollections *api.UserCollections) {
 	app := tview.NewApplication()
 
 	pages := tview.NewPages()
 
 	pages.AddAndSwitchToPage("help", createHelpPage(), true)
 
-	pages.AddPage("home", createHomePage(app, userCollections), true, false)
+	pages.AddPage("home", createHomePage(app, *userCollections), true, false)
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
