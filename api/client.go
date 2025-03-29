@@ -1,16 +1,17 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
+
+	"github.com/iucario/bangumi-go/util"
 )
 
 const (
-	API       string = "https://bgm.tv/oauth/access_token"
+	API       string = "https://api.bgm.tv/v0"
+	API_AUTH  string = "https://bgm.tv/oauth/access_token"
 	GrantType string = "authorization_code"
 	UserAgent string = "iucario/bangumi-go"
 	AppSecret string = "f4f057619facdba407afb48c9dce9114"
@@ -27,7 +28,8 @@ type Credential struct {
 }
 
 // Save credential to file
-func SaveCredential(credential Credential, configDir string) {
+func SaveCredential(credential Credential) {
+	configDir := util.ConfigDir()
 	err := os.MkdirAll(configDir, 0o755)
 	AbortOnError(err)
 
@@ -40,7 +42,8 @@ func SaveCredential(credential Credential, configDir string) {
 }
 
 // Load credential JSON from file
-func LoadCredential(configDir string) (Credential, error) {
+func LoadCredential() (Credential, error) {
+	configDir := util.ConfigDir()
 	credentialPath := fmt.Sprintf("%s/credential.json", configDir)
 	jsonBytes, err := os.ReadFile(credentialPath)
 	if err != nil {
@@ -55,64 +58,22 @@ func LoadCredential(configDir string) (Credential, error) {
 }
 
 // Handle all errors and refresh token. Throw error if a login is required.
-func GetCredential(configDir string) (Credential, error) {
-	credential, err := LoadCredential(configDir)
+func GetCredential() (*Credential, error) {
+	credential, err := LoadCredential()
 	if err != nil {
-		return Credential{}, err
+		return nil, err
 	}
-	statusFlag := GetStatus(credential.AccessToken)
+	authClient := NewAuthClient(credential.AccessToken)
+	statusFlag := authClient.GetStatus()
 	if statusFlag {
-		return credential, nil
+		return &credential, nil
 	}
 
-	err = RefreshToken(configDir)
+	newCredential, err := authClient.RefreshToken()
 	if err != nil {
-		return Credential{}, err
+		return nil, err
 	}
-	credential, _ = LoadCredential(configDir)
-	return credential, nil
-}
-
-func RefreshToken(configDir string) error {
-	credential, err := LoadCredential(configDir)
-	if err != nil {
-		fmt.Println("No token found")
-		return err
-	}
-
-	data := []byte(fmt.Sprintf(`{
-		"grant_type": "refresh_token",
-		"client_id": "%s",
-		"client_secret": "%s",
-		"refresh_token": "%s",
-		"redirect_uri": "http://localhost:9090/auth"
-	}`, ClientId, AppSecret, credential.RefreshToken))
-
-	req, err := http.NewRequest("POST", API, bytes.NewBuffer(data))
-	req.Header.Set("User-Agent", UserAgent)
-	req.Header.Set("Content-Type", "application/json")
-	if err != nil {
-		return err
-	}
-	defer req.Body.Close()
-
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	if res.StatusCode != 200 {
-		return fmt.Errorf("Failed to refresh token")
-	}
-
-	newCredential := Credential{}
-	err = json.NewDecoder(res.Body).Decode(&newCredential)
-	if err != nil {
-		return err
-	}
-
-	SaveCredential(newCredential, configDir)
-	return nil
+	return newCredential, nil
 }
 
 func AbortOnError(err error) {

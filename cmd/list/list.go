@@ -9,15 +9,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var ConfigDir string
-
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List collection",
 	Run: func(cmd *cobra.Command, args []string) {
 		subjectType, _ := cmd.Flags().GetString("subject")
 		collectionType, _ := cmd.Flags().GetString("collection")
-		credential, _ := api.LoadCredential(ConfigDir)
+		credential, _ := api.LoadCredential()
 		userInfo, err := api.GetUserInfo(credential.AccessToken)
 		api.AbortOnError(err)
 		watchCollections, _ := ListUserCollection(credential.AccessToken, userInfo.Username, subjectType, collectionType, 30, 0)
@@ -47,7 +45,7 @@ func ListUserCollection(access_token string, username string, subjectType string
 		collectionTypeInt = api.CollectionType[collectionType]
 	}
 
-	credential, err := api.LoadCredential(ConfigDir)
+	credential, err := api.LoadCredential()
 	if err != nil {
 		return userCollections, err
 	}
@@ -91,6 +89,4 @@ func init() {
 	listCmd.Flags().StringVarP(&subjectType, "subject", "s", "all",
 		"Subject type: book, anime, music, game, real, all.")
 	cmd.RootCmd.AddCommand(listCmd)
-
-	ConfigDir = cmd.ConfigDir
 }

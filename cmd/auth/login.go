@@ -20,15 +20,15 @@ var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Login to https://bangumi.tv",
 	Run: func(cmd *cobra.Command, args []string) {
-		credential, err := api.LoadCredential(ConfigDir)
+		_, err := api.LoadCredential()
 		if err != nil {
 			// Token does not exist, login from browser
 			BrowserLogin()
-		} else if api.GetStatus(credential.AccessToken) {
+		} else if Client.GetStatus() {
 			fmt.Println("Token is still valid")
 			return
 		}
-		err = api.RefreshToken(ConfigDir)
+		_, err = Client.RefreshToken()
 		if err != nil {
 			BrowserLogin()
 		}
@@ -63,7 +63,7 @@ func Start(wg *sync.WaitGroup) {
 		}
 		code := r.URL.Query().Get("code")
 		if code != "" {
-			api.GetAccessToken(code, ConfigDir)
+			Client.GetAccessToken(code)
 			// shutdown
 			cancel()
 			err := srv.Shutdown(context.Background())

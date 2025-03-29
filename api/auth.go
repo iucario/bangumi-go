@@ -1,13 +1,20 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 )
+
+type AuthClient struct {
+	HTTPClient
+}
+
+func NewAuthClient(accessToken string) *AuthClient {
+	return &AuthClient{
+		HTTPClient: *NewHTTPClient(accessToken),
+	}
+}
 
 type AuthStatus struct {
 	AccessToken string `json:"access_token"`
@@ -17,56 +24,101 @@ type AuthStatus struct {
 	UserId      int    `json:"user_id"`
 }
 
-func GetStatus(accessToken string) bool {
-	api := "https://bgm.tv/oauth/token_status?access_token=" + accessToken
-	req, err := http.NewRequest("POST", api, nil)
-	req.Header.Set("User-Agent", UserAgent)
-	req.Header.Set("Content-Type", "application/json")
-	AbortOnError(err)
-
-	client := &http.Client{}
-	res, err := client.Do(req)
-	AbortOnError(err)
-
-	if res.StatusCode == 200 {
-		slog.Info("auth status: OK")
-		status := AuthStatus{}
-		err = json.NewDecoder(res.Body).Decode(&status)
-		AbortOnError(err)
-		slog.Info(fmt.Sprintln("auth status: OK", status))
+func (c *AuthClient) GetStatus() bool {
+	api := fmt.Sprintf("https://bgm.tv/oauth/token_status")
+	b, err := c.Get(api)
+	if err == nil {
 		return true
 	}
-	slog.Warn("auth status: Failed")
-	body, err := io.ReadAll(res.Body)
-	AbortOnError(err)
+	slog.Error(fmt.Sprintf("get status: %v", err))
 
-	slog.Info(fmt.Sprintln("response Body:", string(body)))
+	status := AuthStatus{}
+	if err := json.Unmarshal(b, &status); err == nil {
+		slog.Info(fmt.Sprintf("auth status: %s", status.AccessToken))
+	}
 
 	return false
 }
 
-func GetAccessToken(code, configDir string) {
-	data := []byte(fmt.Sprintf(`{
-		"grant_type": "%s",
-		"client_id": "%s",
-		"client_secret": "%s",
-		"code": "%s",
-		"redirect_uri": "http://localhost:9090/auth"
-	}`, GrantType, ClientId, AppSecret, code))
-	req, err := http.NewRequest("POST", API, bytes.NewBuffer(data))
-	req.Header.Set("User-Agent", UserAgent)
-	req.Header.Set("Content-Type", "application/json")
-	AbortOnError(err)
-	defer req.Body.Close()
+type AccessPayload struct {
+	GrantType    string `json:"grant_type"`
+	ClientId     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	Code         string `json:"code"`
+	RedirectUri  string `json:"redirect_uri"`
+}
 
-	client := &http.Client{}
-	res, err := client.Do(req)
+func (c *AuthClient) GetAccessToken(code string) {
+	payload := AccessPayload{
+		GrantType:    GrantType,
+		ClientId:     ClientId,
+		ClientSecret: AppSecret,
+		Code:         code,
+		RedirectUri:  "http://localhost:9090/auth",
+	}
+	data, err := json.Marshal(payload)
+	AbortOnError(err)
+	b, err := c.Post(API_AUTH, data)
 	AbortOnError(err)
 
 	credential := Credential{}
-	err = json.NewDecoder(res.Body).Decode(&credential)
-	AbortOnError(err)
+	err = json.Unmarshal(b, &credential)
+	if err != nil {
+		slog.Error(fmt.Sprintf("unmarshalling credential: %v", err))
+		return
+	}
 
-	SaveCredential(credential, configDir)
-	fmt.Println(res.StatusCode)
+	// Update the access token in the AuthClient
+	c.AccessToken = credential.AccessToken
+
+	SaveCredential(credential)
+}
+
+type RefreshPayload struct {
+	GrantType    string `json:"grant_type"`
+	ClientId     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	RefreshToken string `json:"refresh_token"`
+	RedirectUri  string `json:"redirect_uri"`
+}
+
+// RefreshToken refreshes the access token using the refresh token stored in the credential file.
+// It returns the new credential or an error if the refresh token is invalid or expired.
+// Updates the token in AuthClient and saves the new credential to the file.
+func (c *AuthClient) RefreshToken() (*Credential, error) {
+	credential, err := LoadCredential()
+	if err != nil {
+		fmt.Println("No token found")
+		return nil, err
+	}
+
+	payload := RefreshPayload{
+		GrantType:    "refresh_token",
+		ClientId:     ClientId,
+		ClientSecret: AppSecret,
+		RefreshToken: credential.RefreshToken,
+		RedirectUri:  "http://localhost:9090/auth",
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := c.Post(API_AUTH, data)
+	if err != nil {
+		return nil, err
+	}
+
+	newCredential := Credential{}
+	err = json.Unmarshal(b, &newCredential)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update the access token in the AuthClient
+	c.AccessToken = newCredential.AccessToken
+
+	SaveCredential(newCredential)
+	return &newCredential, nil
 }

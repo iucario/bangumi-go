@@ -11,12 +11,12 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show auth status",
 	Run: func(cmd *cobra.Command, args []string) {
-		credential, err := api.LoadCredential(ConfigDir)
+		_, err := api.LoadCredential()
 		if err != nil {
 			fmt.Println("No credential found.")
 			return
 		}
-		statusFlag := api.GetStatus(credential.AccessToken)
+		statusFlag := Client.GetStatus()
 		if statusFlag {
 			fmt.Println("Auth status: OK")
 		} else {

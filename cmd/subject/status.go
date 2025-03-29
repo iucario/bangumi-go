@@ -28,7 +28,7 @@ var statusCmd = &cobra.Command{
 		comment, _ := cmd.Flags().GetString("comment")
 		private, _ := cmd.Flags().GetBool("private")
 
-		credential, _ := api.LoadCredential(ConfigDir)
+		credential, _ := api.LoadCredential()
 		userInfo, err := api.GetUserInfo(credential.AccessToken)
 		api.AbortOnError(err)
 		collection, _ := GetUserSubjectCollection(credential.AccessToken, userInfo.Username, subjectId)

@@ -20,7 +20,7 @@ func Uint32ToString(i uint32) string {
 }
 
 // Returns {HOME}/.config/bangumi-go
-func GetConfigDir() string {
+func ConfigDir() string {
 	usr, err := user.Current()
 	if err != nil {
 		slog.Error(err.Error())

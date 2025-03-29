@@ -14,7 +14,8 @@ var RootCmd = &cobra.Command{
 	Use:   "bgm",
 	Short: "bgm is a command line tool for Bangumi.tv",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("hello")
+		fmt.Println("Bangumi CLI")
+		fmt.Println("Use 'bgm help' for more information.")
 	},
 }
 
@@ -35,5 +36,5 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	ConfigDir = util.GetConfigDir()
+	ConfigDir = util.ConfigDir()
 }

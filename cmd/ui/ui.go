@@ -18,13 +18,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var ConfigDir string
-
 var uiCmd = &cobra.Command{
 	Use:   "ui",
 	Short: "Run terminal UI",
 	Run: func(cmd *cobra.Command, args []string) {
-		credential, _ := api.LoadCredential(ConfigDir)
+		credential, _ := api.LoadCredential()
 		userInfo, err := api.GetUserInfo(credential.AccessToken)
 		api.AbortOnError(err)
 		userCollections, _ := list.ListUserCollection(credential.AccessToken, userInfo.Username, "all", "watch", 20, 0)
@@ -41,7 +39,6 @@ var uiCmd = &cobra.Command{
 
 func init() {
 	cmd.RootCmd.AddCommand(uiCmd)
-	ConfigDir = cmd.ConfigDir
 }
 
 func TuiMain(userInfo api.UserInfo, userCollections api.UserCollections) {
@@ -227,7 +224,7 @@ func createForm(collection api.UserSubjectCollection) *tview.Form {
 	form.AddButton("Save", func() {
 		slog.Info("save button clicked")
 		slog.Info("posting collection...")
-		credential, err := api.GetCredential(ConfigDir)
+		credential, err := api.GetCredential()
 		if err != nil {
 			slog.Error("login required")
 			// TODO: display error messsage

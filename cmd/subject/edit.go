@@ -22,7 +22,7 @@ var editCmd = &cobra.Command{
 			return
 		}
 		slog.Info(fmt.Sprintf("edit subjectId=%d watch=%d\n", subjectId, watch))
-		credential, _ := api.LoadCredential(ConfigDir)
+		credential, _ := api.LoadCredential()
 		userInfo, err := api.GetUserInfo(credential.AccessToken)
 		api.AbortOnError(err)
 
