@@ -12,12 +12,15 @@ import (
 	"github.com/iucario/bangumi-go/cmd/subject"
 	"github.com/iucario/bangumi-go/util"
 	"github.com/rivo/tview"
+
+	"github.com/iucario/bangumi-go/internal/ui"
 )
 
 type App struct {
 	*tview.Application
-	Pages *tview.Pages
-	User  *api.User
+	Pages           *tview.Pages
+	User            *api.User
+	UserCollections []api.UserSubjectCollection
 }
 
 func NewApp(user *api.User) *App {
@@ -45,22 +48,10 @@ func (a *App) Run() error {
 	if err != nil {
 		return err
 	}
+	a.UserCollections = userCollections.Data
 
-	a.Pages.AddPage("help", createHelpPage(), true, false)
-	a.Pages.AddAndSwitchToPage("home", newHomePage(a.Application, *userCollections), true)
-
-	a.Application.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyRune:
-			switch event.Rune() {
-			case '?':
-				a.Pages.SwitchToPage("help")
-			case '1':
-				a.Pages.SwitchToPage("home")
-			}
-		}
-		return event
-	})
+	a.Pages.AddAndSwitchToPage("home", a.NewHomePage(), true)
+	a.Pages.AddPage("help", a.NewHelpPage(), true, false)
 
 	if err := a.Application.SetRoot(a.Pages, true).SetFocus(a.Pages).Run(); err != nil {
 		panic(err)
@@ -70,17 +61,17 @@ func (a *App) Run() error {
 
 // newHomePage creates the home page of the TUI application.
 // Left side shows the watch list, right side shows the collection view.
-func newHomePage(app *tview.Application, userCollections api.UserCollections) *tview.Flex {
-	watchList := newWatchList(userCollections)
-	collectionView := newCollectionView(userCollections)
+func (a *App) NewHomePage() *tview.Flex {
+	watchList := a.NewWatchList()
+	collectionView := newCollectionView(&api.UserCollections{Data: a.UserCollections})
 
 	pages := tview.NewPages()
 	pages.AddAndSwitchToPage("view", collectionView, true)
 
 	// Update subject info when an item is selected
 	watchList.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
-		if index >= 0 && index < len(userCollections.Data) {
-			collection := userCollections.Data[index]
+		if index >= 0 && index < len(a.UserCollections) {
+			collection := a.UserCollections[index]
 			slog.Info(fmt.Sprintf("Selected %s", collection.Subject.Name))
 			collectionView.SetText(createCollectionText(collection))
 		}
@@ -97,13 +88,13 @@ func newHomePage(app *tview.Application, userCollections api.UserCollections) *t
 			case 'e':
 				slog.Info("edit")
 				index := watchList.GetCurrentItem()
-				pages.AddAndSwitchToPage("edit", createEditPage(userCollections.Data[index]), true)
-				_, frontPage := pages.GetFrontPage()
-				app.SetFocus(frontPage)
+				modal := a.NewEditModel(a.UserCollections[index])
+				a.Pages.AddPage("edit", modal, true, true) // Add modal as an overlay
+				a.SetFocus(modal)                          // Set focus to the modal
 			case 'v':
 				slog.Info("view")
 				pages.SwitchToPage("view")
-				app.SetFocus(watchList)
+				a.Application.SetFocus(watchList)
 			}
 		}
 		return event
@@ -112,11 +103,40 @@ func newHomePage(app *tview.Application, userCollections api.UserCollections) *t
 	return homePage
 }
 
-// newWatchList creates a list of user collections.
-func newWatchList(userCollections api.UserCollections) *tview.List {
+func (a *App) NewHelpPage() *tview.TextView {
+	text := `Welcome to Bangumi CLI UI
+	Shortcuts:
+
+	[Navigation]
+	1: Go to Home
+	?: Show this help
+	j/up: Move up
+	k/down: Move down
+
+	[Collection]
+	e: Edit collection
+	v: View collection
+	`
+	welcomePage := tview.NewTextView().SetText(text)
+
+	welcomePage.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case '1':
+				a.Pages.SwitchToPage("home")
+			}
+		}
+		return event
+	})
+	return welcomePage
+}
+
+// newWatchList creates a list of user collections titles.
+func (a *App) NewWatchList() *tview.List {
 	watchList := tview.NewList()
 	watchList.SetBorder(true).SetTitle("Watch List").SetTitleAlign(tview.AlignLeft)
-	for _, collection := range userCollections.Data {
+	for _, collection := range a.UserCollections {
 		name := collection.Subject.NameCn
 		if name == "" {
 			name = collection.Subject.Name
@@ -129,6 +149,8 @@ func newWatchList(userCollections api.UserCollections) *tview.List {
 		switch event.Key() {
 		case tcell.KeyRune:
 			switch event.Rune() {
+			case '?':
+				a.Pages.SwitchToPage("help")
 			case 'j':
 				watchList.SetCurrentItem(watchList.GetCurrentItem() + 1)
 			case 'k':
@@ -142,7 +164,7 @@ func newWatchList(userCollections api.UserCollections) *tview.List {
 }
 
 // newCollectionView creates a view for the selected collection.
-func newCollectionView(userCollections api.UserCollections) *tview.TextView {
+func newCollectionView(userCollections *api.UserCollections) *tview.TextView {
 	subjectView := tview.NewTextView().SetDynamicColors(true).SetWrap(true)
 	subjectView.SetBorder(true).SetTitle("Subject Info").SetTitleAlign(tview.AlignLeft)
 	firstCollection := userCollections.Data[0]
@@ -150,14 +172,37 @@ func newCollectionView(userCollections api.UserCollections) *tview.TextView {
 	return subjectView
 }
 
-func createEditPage(collection api.UserSubjectCollection) *tview.Flex {
-	form := createForm(collection)
-	editPage := tview.NewFlex().
-		AddItem(form, 0, 1, true)
-	return editPage
+func (a *App) NewEditModel(collection api.UserSubjectCollection) *ui.Modal {
+	closeFn := func() {
+		a.Pages.RemovePage("edit")
+		a.SetFocus(a.Pages) // Restore focus to the main page
+	}
+	form := createForm(collection, a, closeFn)
+	modal := ui.NewModalForm("Edit Collection", form)
+
+	// Set input capture at the form level to catch Esc
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			closeFn()
+			return nil // Prevent event from propagating
+		}
+		return event
+	})
+
+	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		if buttonIndex == -1 {
+			slog.Info("modal closed")
+			closeFn()
+		} else {
+			slog.Info(fmt.Sprintf("button %d clicked", buttonIndex))
+			slog.Info(fmt.Sprintf("button %s clicked", buttonLabel))
+		}
+	})
+
+	return modal
 }
 
-func createForm(collection api.UserSubjectCollection) *tview.Form {
+func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *tview.Form {
 	// FIXME: inputs 'e' when entering edit mode. Change focus or something.
 	// FIXME: should disable shortcuts when in form
 	statusList := []string{"wish", "done", "watch", "onhold", "dropped"}
@@ -210,11 +255,45 @@ func createForm(collection api.UserSubjectCollection) *tview.Form {
 			slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
 		}
 		subject.WatchToEpisode(credential.AccessToken, int(collection.SubjectID), int(collection.EpStatus))
+
+		// Reorder the list and update the data in the watch list
+		updatedIndex := indexOfCollection(a.UserCollections, collection.SubjectID)
+		if updatedIndex != -1 {
+			newCollections := reorderedSlice(a.UserCollections, updatedIndex)
+			a.UserCollections = newCollections
+			a.UserCollections[0] = collection
+			watchList := a.NewWatchList()
+			watchList.SetCurrentItem(0)
+			a.Pages.RemovePage("home")
+			a.Pages.AddAndSwitchToPage("home", a.NewHomePage(), true)
+		}
+
+		// Back to home page
+		closeFn()
 	})
 	form.AddButton("Cancel", func() {
 		slog.Info("cancel button clicked")
-		// TODO: implement cancel action
-
+		closeFn()
 	})
 	return form
+}
+
+// indexOfCollection finds the index of a collection in the user collections by SubjectID.
+func indexOfCollection(collections []api.UserSubjectCollection, subjectID uint32) int {
+	for i, collection := range collections {
+		if collection.SubjectID == subjectID {
+			return i
+		}
+	}
+	return -1 // Return -1 if not found
+}
+
+// Move the item at index to the front of the slice
+func reorderedSlice(collections []api.UserSubjectCollection, index int) []api.UserSubjectCollection {
+	if index < 0 || index >= len(collections) {
+		return collections
+	}
+	collection := collections[index]
+	collections = append(collections[:index], collections[index+1:]...)
+	return append([]api.UserSubjectCollection{collection}, collections...)
 }

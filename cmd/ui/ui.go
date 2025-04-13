@@ -6,7 +6,6 @@ import (
 
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd"
-	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 )
 
@@ -18,30 +17,16 @@ var uiCmd = &cobra.Command{
 		user := api.NewUser(authClient)
 
 		app := NewApp(user)
-		app.Run()
+		err := app.Run()
+		if err != nil {
+			fmt.Println("Error running app:", err)
+			return
+		}
 	},
 }
 
 func init() {
 	cmd.RootCmd.AddCommand(uiCmd)
-}
-
-func createHelpPage() *tview.TextView {
-	text := `Welcome to Bangumi CLI UI
-	Shortcuts:
-
-	[Navigation]
-	1: Go to Home
-	?: Show this help
-	j/up: Move up
-	k/down: Move down
-
-	[Collection]
-	e: Edit collection
-	v: View collection
-	`
-	welcomePage := tview.NewTextView().SetText(text)
-	return welcomePage
 }
 
 func createCollectionText(collection api.UserSubjectCollection) string {

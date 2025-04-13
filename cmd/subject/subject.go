@@ -95,7 +95,7 @@ func PutEpisode(token string, episodeId int, status string) error {
 // status: delete, wish, done, dropped
 func PatchEpisodes(token string, subjectId int, episodeIds []int, status string) error {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d/episodes", subjectId)
-	slog.Info(fmt.Sprintf("PATCH to %v", url))
+	slog.Info(fmt.Sprintf("PATCH status %s to subject %d", status, subjectId))
 	typeInt := api.EpisodeCollectionType[status]
 	requestBody := struct {
 		EpisodeID []int `json:"episode_id"`
