@@ -18,7 +18,7 @@ var refreshCmd = &cobra.Command{
 			expiration := credential.ExpiresIn
 			expirationTime := time.Now().Add(time.Duration(expiration) * time.Second)
 			date := expirationTime.Format("2006-01-02 15:04:05")
-			fmt.Printf("Refresh token success. New token expires in %s seconds\n", date)
+			fmt.Printf("Refresh token success. New token expires at %s\n", date)
 		}
 	},
 }

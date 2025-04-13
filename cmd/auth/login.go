@@ -48,11 +48,11 @@ func BrowserLogin() {
 
 	serverDone := &sync.WaitGroup{}
 	serverDone.Add(1)
-	Start(serverDone)
+	start(context.Background(), serverDone)
 	serverDone.Wait()
 }
 
-func Start(wg *sync.WaitGroup) {
+func start(ctx context.Context, wg *sync.WaitGroup) {
 	srv := &http.Server{Addr: ":9090"}
 	http.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
 		select {
@@ -64,9 +64,10 @@ func Start(wg *sync.WaitGroup) {
 		code := r.URL.Query().Get("code")
 		if code != "" {
 			Client.GetAccessToken(code)
+			fmt.Println("Login success.")
+			fmt.Fprintln(w, "Login success. You can close this page now.")
 			// shutdown
-			cancel()
-			err := srv.Shutdown(context.Background())
+			err := srv.Shutdown(ctx)
 			if err != nil {
 				slog.Info("server.Shutdown:", "Error", err)
 			}
