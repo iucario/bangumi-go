@@ -1,9 +1,13 @@
-run:
-  timeout: 5m
+version: '2'
+
 linters:
-  disable-all: true
+  # The value can be: `standard`, `all`, `none`, or `fast`.
+  # Default: standard
+  default: none
+
+  # Enable specific linter.
+  # https://golangci-lint.run/usage/linters/#enabled-by-default
   enable:
-    # Default linters
     - errcheck # checking for unchecked errors, these unchecked errors can be critical bugs in some cases
     - gosimple # specializes in simplifying a code
     - govet # reports suspicious constructs, such as Printf calls whose arguments do not align with the format string

@@ -132,7 +132,11 @@ func sendRequest(req *http.Request, data any) error {
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			slog.Error("failed to close response body")
+		}
+	}()
 
 	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {

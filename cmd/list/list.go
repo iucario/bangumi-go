@@ -86,6 +86,9 @@ type ListParams struct {
 func ListCollection(authClient *api.AuthClient, params ListParams) (*api.UserCollections, error) {
 	baseUrl := fmt.Sprintf("https://api.bgm.tv/v0/users/%s/collections", params.Username)
 	url, err := url.Parse(baseUrl)
+	if err != nil {
+		return nil, err
+	}
 	queries := url.Query()
 	queries.Set("limit", fmt.Sprintf("%d", params.Limit))
 	queries.Set("offset", fmt.Sprintf("%d", params.Offset))

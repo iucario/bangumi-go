@@ -48,8 +48,8 @@ func NewModalForm(title string, form *tview.Form) *Modal {
 	})
 	frame := tview.NewFrame(m.form)
 	frame.SetBorders(0, 0, 1, 0, 0, 0)
-	frame.Box.SetBorderPadding(1, 1, 1, 1)
-	frame.Box.SetBackgroundColor(tview.Styles.ContrastBackgroundColor)
+	frame.SetBorderPadding(1, 1, 1, 1)
+	frame.SetBackgroundColor(tview.Styles.ContrastBackgroundColor)
 	m.frame = frame
 
 	return m
@@ -73,7 +73,7 @@ func (m *Modal) Draw(screen tcell.Screen) {
 	m.SetRect(x, y, width, height)
 
 	// Draw the background and border
-	m.Box.DrawForSubclass(screen, m)
+	m.DrawForSubclass(screen, m)
 
 	// Get inner rect for the form
 	innerX, innerY, innerWidth, innerHeight := m.GetInnerRect()

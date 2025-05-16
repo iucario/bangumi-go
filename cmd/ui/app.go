@@ -94,7 +94,7 @@ func (a *App) NewHomePage() *tview.Flex {
 			case 'v':
 				slog.Info("view")
 				pages.SwitchToPage("view")
-				a.Application.SetFocus(watchList)
+				a.SetFocus(watchList)
 			}
 		}
 		return event

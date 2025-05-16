@@ -39,7 +39,7 @@ type AuthStatus struct {
 }
 
 func (c *AuthClient) GetStatus() bool {
-	api := fmt.Sprintf("https://bgm.tv/oauth/token_status")
+	api := "https://bgm.tv/oauth/token_status"
 	b, err := c.Get(api)
 	if err == nil {
 		return true

@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var ctxShutdown, cancel = context.WithCancel(context.Background())
+var ctxShutdown, _ = context.WithCancel(context.Background())
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
@@ -65,14 +65,21 @@ func start(ctx context.Context, wg *sync.WaitGroup) {
 		if code != "" {
 			Client.GetAccessToken(code)
 			fmt.Println("Login success.")
-			fmt.Fprintln(w, "Login success. You can close this page now.")
+			_, err := fmt.Fprintln(w, "Login success. You can close this page now.")
+			if err != nil {
+				slog.Error("Error writing response", "Error", err)
+			}
 			// shutdown
-			err := srv.Shutdown(ctx)
+			err = srv.Shutdown(ctx)
 			if err != nil {
 				slog.Info("server.Shutdown:", "Error", err)
 			}
 		} else {
-			fmt.Fprintln(w, "Hi") // Server HTML page to fetch token and return to server at /auth
+			_, err := fmt.Fprintln(w, "Hi") // Server HTML page to fetch token and return to server at /auth
+			if err != nil {
+				slog.Error("Error writing response", "Error", err)
+			}
+
 		}
 	})
 

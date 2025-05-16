@@ -112,5 +112,5 @@ func getCurrentEpisode(userEpisodeCollection []api.UserEpisodeCollection) (api.U
 			return userEpisode, nil
 		}
 	}
-	return userEpisodeCollection[0], fmt.Errorf("No more episodes to watch")
+	return userEpisodeCollection[0], fmt.Errorf("no more episodes to watch")
 }
