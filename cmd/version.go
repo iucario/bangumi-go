@@ -6,14 +6,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	Version = "dev" // Default version if not set during build
+)
+
 func init() {
 	RootCmd.AddCommand(versionCmd)
 }
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the version number of bgm-cli",
+	Short: "Print the version information of bgm-cli",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("bgm-cli v0.1")
+		fmt.Printf("bgm-cli version: %s\n", Version)
 	},
 }
