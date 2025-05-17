@@ -31,25 +31,22 @@ type Modal struct {
 }
 
 // NewModalForm returns a new form modal.
-func NewModalForm(title string, form *tview.Form) *Modal {
+func NewModalForm(_ string, form *tview.Form) *Modal {
 	m := &Modal{
-		Box: tview.NewBox().SetBorder(true).SetTitle(title).
-			SetBackgroundColor(tview.Styles.ContrastBackgroundColor),
-		text:      title,
-		textColor: tview.Styles.PrimaryTextColor,
+		Box:       tview.NewBox().SetBorder(true).SetBackgroundColor(Styles.PrimitiveBackgroundColor),
+		textColor: Styles.PrimaryTextColor,
 	}
 	m.form = form
-	m.form.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
-	m.form.SetBorderPadding(1, 1, 1, 1)
+	m.form.SetBackgroundColor(Styles.PrimitiveBackgroundColor)
+	m.form.SetBorder(false)
 	m.form.SetCancelFunc(func() {
 		if m.done != nil {
 			m.done(-1, "")
 		}
 	})
 	frame := tview.NewFrame(m.form)
-	frame.SetBorders(0, 0, 1, 0, 0, 0)
-	frame.SetBorderPadding(1, 1, 1, 1)
-	frame.SetBackgroundColor(tview.Styles.ContrastBackgroundColor)
+	frame.SetBorder(false)
+	frame.SetBackgroundColor(Styles.ContrastBackgroundColor)
 	m.frame = frame
 
 	return m

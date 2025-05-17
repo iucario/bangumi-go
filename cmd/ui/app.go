@@ -79,6 +79,8 @@ func (a *App) NewHomePage() *tview.Flex {
 		}
 	})
 
+	collectionView.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
+
 	homePage := tview.NewFlex().
 		AddItem(watchList, 0, 1, true).
 		AddItem(pages, 0, 2, false)
@@ -131,7 +133,9 @@ func (a *App) NewHelpPage() *tview.TextView {
 
 // newWatchList creates a list of user collections titles.
 func (a *App) NewWatchList() *tview.List {
-	watchList := tview.NewList()
+	mainTextStyle := tcell.StyleDefault.Foreground(ui.Styles.PrimaryTextColor).Background(ui.Styles.PrimitiveBackgroundColor)
+	watchList := tview.NewList().SetMainTextStyle(mainTextStyle)
+	watchList.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
 	watchList.SetBorder(true).SetTitle("Watch List").SetTitleAlign(tview.AlignLeft)
 	for _, collection := range a.UserCollections {
 		name := collection.Subject.NameCn
@@ -239,8 +243,8 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 		collection.Private = checked
 	})
 	form.AddButton("Save", func() {
-		slog.Info("save button clicked")
-		slog.Info("posting collection...")
+		slog.Debug("save button clicked")
+		slog.Debug("posting collection...")
 		credential, err := api.GetCredential()
 		if err != nil {
 			slog.Error("login required")
