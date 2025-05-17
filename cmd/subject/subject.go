@@ -50,7 +50,7 @@ func GetUserEpisodeCollections(token string, subjectId, offset, limit, episode_t
 
 // status: wish, done, watch, onhold, dropped
 // ep_status and vol_status are only used for book
-func PostCollection(token string, subjectId int, status string, tags []string, comment string, rate int, private bool) error {
+func PostCollection(token string, subjectId int, status api.CollectionStatus, tags []string, comment string, rate int, private bool) error {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d", subjectId)
 	requestBody := struct {
 		Type    int      `json:"type"`

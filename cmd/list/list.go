@@ -17,14 +17,20 @@ var listCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		subjectType, _ := cmd.Flags().GetString("subject")
 		collectionType, _ := cmd.Flags().GetString("collection")
+
+		if api.CollectionStatus(collectionType) == "" {
+			fmt.Printf("Invalid collection type: %s\n", collectionType)
+		}
+
 		authClient := api.NewAuthClientWithConfig()
 		user := api.NewUser(authClient)
 		userInfo, err := user.GetUserInfo()
 		api.AbortOnError(err)
+
 		options := UserListOptions{
 			SubjectType:    subjectType,
 			Username:       userInfo.Username,
-			CollectionType: collectionType,
+			CollectionType: api.CollectionStatus(collectionType),
 			Limit:          30,
 			Offset:         0,
 		}
@@ -45,7 +51,7 @@ var listCmd = &cobra.Command{
 type UserListOptions struct {
 	Username       string
 	SubjectType    string
-	CollectionType string
+	CollectionType api.CollectionStatus
 	Limit          int
 	Offset         int
 }

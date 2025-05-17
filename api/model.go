@@ -5,20 +5,38 @@ import (
 	"time"
 )
 
-var CollectionType map[string]int = map[string]int{
-	"wish":    1,
-	"done":    2,
-	"watch":   3,
-	"onhold":  4,
-	"dropped": 5,
+type CollectionStatus string
+
+func (c CollectionStatus) String() string {
+	return string(c)
 }
 
-var CollectionTypeRev map[int]string = map[int]string{
-	1: "wish",
-	2: "done",
-	3: "watch",
-	4: "onhold",
-	5: "dropped",
+type SubjectT string
+type EpisodeStatus string
+
+const (
+	Wish     CollectionStatus = "wish"
+	Done     CollectionStatus = "done"
+	Watching CollectionStatus = "watching"
+	OnHold   CollectionStatus = "stashed"
+	Dropped  CollectionStatus = "dropped"
+	All      CollectionStatus = "all" // custom
+)
+
+var CollectionType = map[CollectionStatus]int{
+	Wish:     1,
+	Done:     2,
+	Watching: 3,
+	OnHold:   4,
+	Dropped:  5,
+}
+
+var CollectionTypeRev = map[int]CollectionStatus{
+	1: Wish,
+	2: Done,
+	3: Watching,
+	4: OnHold,
+	5: Dropped,
 }
 
 var SubjectType map[string]int = map[string]int{
@@ -153,11 +171,11 @@ type Count struct {
 	Field10 uint32
 }
 
-func (c *UserSubjectCollection) GetStatus() string {
+func (c *UserSubjectCollection) GetStatus() CollectionStatus {
 	return CollectionTypeRev[int(c.Type)]
 }
 
-func (c *UserSubjectCollection) SetStatus(status string) {
+func (c *UserSubjectCollection) SetStatus(status CollectionStatus) {
 	c.Type = uint32(CollectionType[status])
 }
 

@@ -13,6 +13,8 @@ import (
 	"github.com/iucario/bangumi-go/util"
 	"github.com/rivo/tview"
 
+	"slices"
+
 	"github.com/iucario/bangumi-go/internal/ui"
 )
 
@@ -40,7 +42,7 @@ func (a *App) Run() error {
 	options := list.UserListOptions{
 		SubjectType:    "all",
 		Username:       userInfo.Username,
-		CollectionType: "all",
+		CollectionType: api.Watching,
 		Limit:          20,
 		Offset:         0,
 	}
@@ -91,10 +93,6 @@ func (a *App) NewHomePage() *tview.Flex {
 				modal := a.NewEditModel(a.UserCollections[index])
 				a.Pages.AddPage("edit", modal, true, true) // Add modal as an overlay
 				a.SetFocus(modal)                          // Set focus to the modal
-			case 'v':
-				slog.Info("view")
-				pages.SwitchToPage("view")
-				a.SetFocus(watchList)
 			}
 		}
 		return event
@@ -115,7 +113,6 @@ func (a *App) NewHelpPage() *tview.TextView {
 
 	[Collection]
 	e: Edit collection
-	v: View collection
 	`
 	welcomePage := tview.NewTextView().SetText(text)
 
@@ -205,8 +202,8 @@ func (a *App) NewEditModel(collection api.UserSubjectCollection) *ui.Modal {
 func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *tview.Form {
 	// FIXME: inputs 'e' when entering edit mode. Change focus or something.
 	// FIXME: should disable shortcuts when in form
-	statusList := []string{"wish", "done", "watch", "onhold", "dropped"}
-	status := util.IndexOfString(statusList, collection.GetStatus())
+	statusList := []string{"wish", "done", "watching", "stashed", "dropped"}
+	status := util.IndexOfString(statusList, collection.GetStatus().String())
 	initTags := collection.GetTags()
 
 	form := tview.NewForm()
@@ -221,7 +218,7 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 
 	form.AddDropDown("Status", statusList, status, func(option string, optionIndex int) {
 		slog.Debug(fmt.Sprintf("selected %s", option))
-		collection.SetStatus(option)
+		collection.SetStatus(api.CollectionStatus(option))
 	})
 	form.AddInputField("Tags", initTags, 20, nil, func(text string) {
 		// TODO: validate tags
@@ -249,7 +246,7 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 			slog.Error("login required")
 			// TODO: display error messsage
 		}
-		err = subject.PostCollection(credential.AccessToken, int(collection.SubjectID), statusList[collection.Type-1],
+		err = subject.PostCollection(credential.AccessToken, int(collection.SubjectID), collection.GetStatus(),
 			collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
@@ -294,6 +291,6 @@ func reorderedSlice(collections []api.UserSubjectCollection, index int) []api.Us
 		return collections
 	}
 	collection := collections[index]
-	collections = append(collections[:index], collections[index+1:]...)
+	collections = slices.Delete(collections, index, index+1)
 	return append([]api.UserSubjectCollection{collection}, collections...)
 }

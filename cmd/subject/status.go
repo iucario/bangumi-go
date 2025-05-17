@@ -34,7 +34,7 @@ var statusCmd = &cobra.Command{
 		api.AbortOnError(err)
 		collection, _ := GetUserSubjectCollection(authClient.AccessToken, userInfo.Username, subjectId)
 
-		modifyCollection(authClient.AccessToken, subjectId, status, tags, rate, comment, private, collection)
+		modifyCollection(authClient.AccessToken, subjectId, api.CollectionStatus(status), tags, rate, comment, private, collection)
 		subject := GetSubjectInfo(subjectId)
 		fmt.Printf("%d\n%s\n%s\n", subject.ID, subject.NameCn, subject.Name)
 
@@ -57,7 +57,7 @@ func init() {
 }
 
 // Modify collection if any of the args are not empty and different from the current collection
-func modifyCollection(token string, subjectId int, status string, tags []string, rate int, comment string, private bool, collection api.UserSubjectCollection) {
+func modifyCollection(token string, subjectId int, status api.CollectionStatus, tags []string, rate int, comment string, private bool, collection api.UserSubjectCollection) {
 	slog.Info(fmt.Sprintf("called modifyCollection: %s %v %d %s private %v", status, tags, rate, comment, private))
 	finalStatus := api.CollectionTypeRev[int(collection.Type)]
 	if status != "" && validateStatus(status) {
@@ -87,7 +87,7 @@ func modifyCollection(token string, subjectId int, status string, tags []string,
 	}
 }
 
-func collectionChanged(status string, tags []string, rate int, comment string, private bool, collection api.UserSubjectCollection) bool {
+func collectionChanged(status api.CollectionStatus, tags []string, rate int, comment string, private bool, collection api.UserSubjectCollection) bool {
 	if status != api.CollectionTypeRev[int(collection.Type)] {
 		return true
 	}
@@ -106,8 +106,11 @@ func collectionChanged(status string, tags []string, rate int, comment string, p
 	return false
 }
 
-func validateStatus(status string) bool {
-	return status == "wish" || status == "done" || status == "watch" || status == "onhold" || status == "dropped"
+func validateStatus(status api.CollectionStatus) bool {
+	if _, ok := api.CollectionType[status]; !ok {
+		return false
+	}
+	return true
 }
 
 func printSubjectStatus(token string, subjectId int, collection api.UserSubjectCollection) {
