@@ -33,7 +33,11 @@ var listCmd = &cobra.Command{
 
 		fmt.Printf("Total: %d. Showing: %d\n", watchCollections.Total, len(watchCollections.Data))
 		for i, collection := range watchCollections.Data {
-			fmt.Printf("%d. %d/%d %s\n", i+1, collection.EpStatus, collection.Subject.Eps, collection.Subject.NameCn)
+			name := collection.Subject.NameCn
+			if name == "" {
+				name = collection.Subject.Name
+			}
+			fmt.Printf("%d. %d/%d %s\n", i+1, collection.EpStatus, collection.Subject.Eps, name)
 		}
 	},
 }
@@ -103,6 +107,7 @@ func ListCollection(authClient *api.AuthClient, params ListParams) (*api.UserCol
 		queries.Set("type", fmt.Sprintf("%d", params.CollectionType))
 		queries.Set("subject_type", fmt.Sprintf("%d", params.SubjectType))
 	}
+	url.RawQuery = queries.Encode()
 
 	slog.Info(fmt.Sprintf("ListCollection: %s", url.String()))
 
