@@ -59,11 +59,11 @@ func (a *App) Run() error {
 	a.UserCollections[api.Watching] = userCollections.Data
 
 	// Add separate pages for each collection type
-	a.Pages.AddAndSwitchToPage("watching", a.NewListPage(api.Watching), true)
-	a.Pages.AddPage("wish", a.NewListPage(api.Wish), true, false)
-	a.Pages.AddPage("done", a.NewListPage(api.Done), true, false)
-	a.Pages.AddPage("stashed", a.NewListPage(api.OnHold), true, false)
-	a.Pages.AddPage("dropped", a.NewListPage(api.Dropped), true, false)
+	a.Pages.AddAndSwitchToPage("watching", a.NewCollectionPage(api.Watching), true)
+	a.Pages.AddPage("wish", a.NewCollectionPage(api.Wish), true, false)
+	a.Pages.AddPage("done", a.NewCollectionPage(api.Done), true, false)
+	a.Pages.AddPage("stashed", a.NewCollectionPage(api.OnHold), true, false)
+	a.Pages.AddPage("dropped", a.NewCollectionPage(api.Dropped), true, false)
 	a.Pages.AddPage("help", a.NewHelpPage(), true, false)
 
 	if err := a.Application.SetRoot(a.Pages, true).SetFocus(a.Pages).Run(); err != nil {
@@ -72,12 +72,12 @@ func (a *App) Run() error {
 	return nil
 }
 
-// NewListPage creates a list with detail page for a specific collection type.
-func (a *App) NewListPage(collectionStatus api.CollectionStatus) *tview.Flex {
+// NewCollectionPage creates a list with detail page for a specific collection type.
+func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Flex {
 	mainTextStyle := tcell.StyleDefault.Foreground(ui.Styles.PrimaryTextColor).Background(ui.Styles.PrimitiveBackgroundColor)
-	collectionList := tview.NewList().SetMainTextStyle(mainTextStyle)
-	collectionList.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
-	collectionList.SetBorder(true).SetTitle(fmt.Sprintf("List %s", collectionStatus)).SetTitleAlign(tview.AlignLeft)
+	listView := tview.NewList().SetMainTextStyle(mainTextStyle)
+	listView.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
+	listView.SetBorder(true).SetTitle(fmt.Sprintf("List %s", collectionStatus)).SetTitleAlign(tview.AlignLeft)
 
 	options := list.UserListOptions{
 		CollectionType: collectionStatus,
@@ -86,7 +86,6 @@ func (a *App) NewListPage(collectionStatus api.CollectionStatus) *tview.Flex {
 		Limit:          20,
 		Offset:         0,
 	}
-
 	userCollections, err := list.ListUserCollection(a.User.Client, options)
 	if err != nil {
 		slog.Error("Failed to fetch collections", "Error", err)
@@ -95,44 +94,52 @@ func (a *App) NewListPage(collectionStatus api.CollectionStatus) *tview.Flex {
 	a.UserCollections[collectionStatus] = userCollections.Data
 	collections := a.UserCollections[collectionStatus]
 
+	// TODO: move this to collection function
 	for _, collection := range collections {
 		name := collection.Subject.NameCn
 		if name == "" {
 			name = collection.Subject.Name
 		}
-		collectionList.AddItem(name, "", 0, nil)
+		listView.AddItem(name, "", 0, nil)
 	}
 
-	collectionView := newCollectionDetail(&collections[0])
-
-	pages := tview.NewPages()
-	pages.AddAndSwitchToPage("view", collectionView, true)
+	// Initialize the first item's detail view
+	detailView := newCollectionDetail(&collections[0])
+	detailView.SetScrollable(true)
 
 	// Update subject info when an item is selected
-	collectionList.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+	listView.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
 		if index >= 0 && index < len(collections) {
 			collection := collections[index]
 			slog.Debug(fmt.Sprintf("Selected %s", collection.Subject.Name))
-			collectionView.SetText(createCollectionText(&collection))
+			detailView.SetText(createCollectionText(&collection))
 		}
 	})
 
 	// The flex layout for the collection page
 	collectionPage := tview.NewFlex().
-		AddItem(collectionList, 0, 2, true).
-		AddItem(pages, 0, 3, false)
+		AddItem(listView, 0, 2, true).
+		AddItem(detailView, 0, 3, false)
 	collectionPage.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
 	collectionPage.SetFullScreen(true).SetBorderPadding(0, 0, 0, 0)
+
+	// Scroll with j/k keys
+	detailView.SetInputCapture(handleScrollKeys(detailView))
+	listView.SetInputCapture(handleScrollKeys(listView))
 
 	// Update the input capture to use numeric keys for switching pages
 	collectionPage.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
+		case tcell.KeyLeft:
+			a.SetFocus(listView)
+		case tcell.KeyRight:
+			a.SetFocus(detailView)
 		case tcell.KeyRune:
 			switch event.Rune() {
-			case 'j':
-				collectionList.SetCurrentItem((collectionList.GetCurrentItem() + 1) % len(collections))
-			case 'k':
-				collectionList.SetCurrentItem((collectionList.GetCurrentItem() - 1) % len(collections))
+			case 'l':
+				a.SetFocus(detailView)
+			case 'h':
+				a.SetFocus(listView)
 			case '?':
 				a.Pages.SwitchToPage("help")
 			case '1':
@@ -147,7 +154,7 @@ func (a *App) NewListPage(collectionStatus api.CollectionStatus) *tview.Flex {
 				a.Pages.SwitchToPage("dropped")
 			case 'e':
 				slog.Debug("edit")
-				index := collectionList.GetCurrentItem()
+				index := listView.GetCurrentItem()
 				modal := a.NewEditModel(collections[index])
 				a.Pages.AddPage("edit", modal, true, true) // Add modal as an overlay
 				a.SetFocus(modal)                          // Set focus to the modal
@@ -162,17 +169,36 @@ func (a *App) NewListPage(collectionStatus api.CollectionStatus) *tview.Flex {
 	return collectionPage
 }
 
+// handleScrollKeys captures input events for the Box and handles 'j' and 'k' keys.
+func handleScrollKeys(b tview.Primitive) func(event *tcell.EventKey) *tcell.EventKey {
+	return func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'j':
+			b.InputHandler()(tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone), nil)
+		case 'k':
+			b.InputHandler()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone), nil)
+		}
+		return event
+	}
+}
+
 func (a *App) NewHelpPage() *tview.TextView {
 	text := `Welcome to Bangumi CLI UI
 	Shortcuts:
 
 	[Navigation]
-	1: Go to Home
+	1: Go to watching list
+	2: Go to wish list
+	3: Go to done list
+	4: Go to stashed list
+	5: Go to dropped list
 	?: Show this help
 	j/up: Move up
 	k/down: Move down
+	h/left: Switch to left
+	l/right: Switch to right
 
-	[Collection]
+	[Collection List]
 	e: Edit collection
 	`
 	welcomePage := tview.NewTextView().SetText(text)
@@ -182,7 +208,15 @@ func (a *App) NewHelpPage() *tview.TextView {
 		case tcell.KeyRune:
 			switch event.Rune() {
 			case '1':
-				a.Pages.SwitchToPage("home")
+				a.Pages.SwitchToPage("watching")
+			case '2':
+				a.Pages.SwitchToPage("wish")
+			case '3':
+				a.Pages.SwitchToPage("done")
+			case '4':
+				a.Pages.SwitchToPage("stashed")
+			case '5':
+				a.Pages.SwitchToPage("dropped")
 			}
 		}
 		return event
@@ -330,7 +364,7 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 			collections[0] = collection
 			// Update the page
 			// FIXME: not updating the other pages
-			newPage := a.NewListPage(collectionStatus)
+			newPage := a.NewCollectionPage(collectionStatus)
 			a.Pages.RemovePage(collectionStatus.String())
 			a.Pages.AddPage(collectionStatus.String(), newPage, true, false)
 			a.Pages.SwitchToPage(collectionStatus.String())
