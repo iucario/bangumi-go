@@ -201,29 +201,38 @@ func newCollectionDetail(userCollection *api.UserSubjectCollection) *tview.TextV
 
 // createCollectionText generates the text to display details of a collection.
 func createCollectionText(c *api.UserSubjectCollection) string {
-	text := fmt.Sprintf("[yellow]%s[-]\n%s\n\n%s\n", c.Subject.NameCn, c.Subject.Name, c.Subject.ShortSummary)
-	tags := strings.Join(c.Tags, ", ")
-	text += fmt.Sprintf("\nYour Tags: [green]%s[-]\n", tags)
-	if c.Rate == 0 {
-		text += "Your Rate: [blue]N/A[-]\n"
-	} else {
-		text += fmt.Sprintf("Your Rate: [blue]%d[-]\n", c.Rate)
+	colorToStr := func(color tcell.Color) string {
+		r, g, b := color.RGB()
+		return fmt.Sprintf("#%02X%02X%02X", r, g, b)
 	}
+
+	text := fmt.Sprintf("[%s]%s[-]\n%s\n\n", colorToStr(ui.Styles.SecondaryTextColor), c.Subject.NameCn, c.Subject.Name)
+	text += fmt.Sprintf("%s\n", api.SubjectTypeRev[int(c.Subject.Type)])
+	text += fmt.Sprintf("%s\n", c.Subject.ShortSummary)
+	text += fmt.Sprintf("\nYour Tags: [%s]%s[-]\n", colorToStr(ui.Styles.TertiaryTextColor), c.GetTags())
+	rate := "Unknown"
+	if c.Rate != 0 {
+		rate = fmt.Sprintf("%d", c.Rate)
+	}
+	text += fmt.Sprintf("Your Rate: [%s]%s[-]\n", colorToStr(ui.Styles.TertiaryTextColor), rate)
 	totalEp := "Unknown"
 	if c.Subject.Eps != 0 {
 		totalEp = fmt.Sprintf("%d", c.Subject.Eps)
 	}
-	text += fmt.Sprintf("Episodes Watched: %d of %s\n", c.EpStatus, totalEp)
+	text += fmt.Sprintf("Episodes Watched: [%s]%d[-] of %s\n", colorToStr(ui.Styles.TertiaryTextColor), c.EpStatus, totalEp)
 	if c.Subject.Type == 1 { // Book
 		totalVol := "Unknown"
 		if c.Subject.Volumes != 0 {
 			totalVol = fmt.Sprintf("%d", c.Subject.Volumes)
 		}
-		text += fmt.Sprintf("Volumes Read: %d of %s\n", c.VolStatus, totalVol)
+		text += fmt.Sprintf("Volumes Read: [%s]%d[-] of %s\n", colorToStr(ui.Styles.TertiaryTextColor), c.VolStatus, totalVol)
 	}
-	text += fmt.Sprintf("On Aired: %s\n", c.Subject.Date)
+	text += "\n---------------------------------------\n\n"
+	text += fmt.Sprintf("On Air Date: %s\n", c.Subject.Date)
 	text += fmt.Sprintf("User Score: %.1f\n", c.Subject.Score)
-
+	text += fmt.Sprintf("Rank: %d\n", c.Subject.Rank)
+	text += fmt.Sprintf("User Tags: %s\n", c.GetAllTags())
+	text += fmt.Sprintf("Marked By: %d users\n", c.Subject.CollectionTotal)
 	return text
 }
 

@@ -186,3 +186,15 @@ func (c *UserSubjectCollection) GetSubjectType() string {
 func (c *UserSubjectCollection) GetTags() string {
 	return strings.Join(c.Tags, " ")
 }
+
+// GetTags returns the top 10 all user tags as a space-separated string.
+func (c *UserSubjectCollection) GetAllTags() string {
+	if len(c.Subject.Tags) == 0 {
+		return ""
+	}
+	var tags []string
+	for _, tag := range c.Subject.Tags {
+		tags = append(tags, tag.Name)
+	}
+	return strings.Join(tags, " ")
+}
