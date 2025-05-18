@@ -26,6 +26,7 @@ type App struct {
 }
 
 func NewApp(user *api.User) *App {
+	slog.Debug("New App", "User:", user)
 	return &App{
 		Application: tview.NewApplication(),
 		Pages:       tview.NewPages(),
@@ -34,14 +35,9 @@ func NewApp(user *api.User) *App {
 }
 
 func (a *App) Run() error {
-	userInfo, err := a.User.GetUserInfo()
-	if err != nil {
-		fmt.Println("Login required. Please run `bgm auth login` first.")
-		return err
-	}
 	options := list.UserListOptions{
 		SubjectType:    "all",
-		Username:       userInfo.Username,
+		Username:       a.User.Username,
 		CollectionType: api.Watching,
 		Limit:          20,
 		Offset:         0,
@@ -145,7 +141,16 @@ func (a *App) NewWatchList() *tview.List {
 		watchList.AddItem(name, "", 0, nil)
 	}
 
-	// Set up keybindings for navigation
+	// Define options locally within the NewWatchList function
+	options := list.UserListOptions{
+		SubjectType:    "all",
+		Username:       a.User.Username,
+		CollectionType: api.Watching,
+		Limit:          20,
+		Offset:         0,
+	}
+
+	// Add a shortcut to switch collection types and update the watch list title accordingly
 	watchList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyRune:
@@ -156,6 +161,39 @@ func (a *App) NewWatchList() *tview.List {
 				watchList.SetCurrentItem(watchList.GetCurrentItem() + 1)
 			case 'k':
 				watchList.SetCurrentItem(watchList.GetCurrentItem() - 1)
+			case 't': // Shortcut to switch collection types
+				currentType := options.CollectionType
+				newType := api.Watching // Default to Watching
+				switch currentType {
+				case api.Watching:
+					newType = api.Wish
+				case api.Wish:
+					newType = api.Done
+				case api.Done:
+					newType = api.OnHold
+				case api.OnHold:
+					newType = api.Dropped
+				case api.Dropped:
+					newType = api.All
+				case api.All:
+					newType = api.Watching
+				}
+				options.CollectionType = newType
+				userCollections, err := list.ListUserCollection(a.User.Client, options)
+				if err != nil {
+					slog.Error("Failed to fetch collections", "Error", err)
+					return event
+				}
+				a.UserCollections = userCollections.Data
+				watchList.Clear()
+				for _, collection := range a.UserCollections {
+					name := collection.Subject.NameCn
+					if name == "" {
+						name = collection.Subject.Name
+					}
+					watchList.AddItem(name, "", 0, nil)
+				}
+				watchList.SetTitle(fmt.Sprintf("List (%s)", newType))
 			}
 		}
 		return event

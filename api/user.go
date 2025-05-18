@@ -7,30 +7,26 @@ import (
 
 type User struct {
 	Client *AuthClient
-	UserInfo
+	*UserInfo
 }
 
+// NewUser creates a new User instance with the provided AuthClient and fetches user info.
 func NewUser(client *AuthClient) *User {
+	if client == nil {
+		return nil
+	}
+	userInfo, err := getUserInfo(client)
+	if err != nil {
+		return nil
+	}
 	return &User{
-		Client: client,
+		Client:   client,
+		UserInfo: userInfo,
 	}
 }
 
 func (u *User) GetUserInfo() (*UserInfo, error) {
-	API := "https://api.bgm.tv/v0/me"
-
-	b, err := u.Client.Get(API)
-	if err != nil {
-		return nil, err
-	}
-
-	userInfo := UserInfo{}
-	err = json.Unmarshal(b, &userInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	return &userInfo, nil
+	return getUserInfo(u.Client)
 }
 
 type UserInfo struct {
@@ -54,4 +50,21 @@ type DefaultResponse struct {
 	Request string `json:"request"`
 	Code    string `json:"code"`
 	Error   string `json:"error"`
+}
+
+func getUserInfo(client *AuthClient) (*UserInfo, error) {
+	API := "https://api.bgm.tv/v0/me"
+
+	b, err := client.Get(API)
+	if err != nil {
+		return nil, err
+	}
+
+	userInfo := UserInfo{}
+	err = json.Unmarshal(b, &userInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userInfo, nil
 }
