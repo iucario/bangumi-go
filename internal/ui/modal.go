@@ -33,12 +33,20 @@ type Modal struct {
 // NewModalForm returns a new form modal.
 func NewModalForm(_ string, form *tview.Form) *Modal {
 	m := &Modal{
-		Box:       tview.NewBox().SetBorder(true).SetBackgroundColor(Styles.PrimitiveBackgroundColor),
+		Box:       tview.NewBox().SetBackgroundColor(Styles.PrimitiveBackgroundColor),
 		textColor: Styles.PrimaryTextColor,
 	}
 	m.form = form
 	m.form.SetBackgroundColor(Styles.PrimitiveBackgroundColor)
-	m.form.SetBorder(false)
+
+	// Set background color for each input field
+	// form.SetFieldBackgroundColor does not work for short input fields
+	for i := range form.GetFormItemCount() {
+		if inputField, ok := form.GetFormItem(i).(*tview.InputField); ok {
+			inputField.SetBackgroundColor(Styles.PrimitiveBackgroundColor)
+		}
+	}
+
 	m.form.SetCancelFunc(func() {
 		if m.done != nil {
 			m.done(-1, "")
@@ -46,7 +54,7 @@ func NewModalForm(_ string, form *tview.Form) *Modal {
 	})
 	frame := tview.NewFrame(m.form)
 	frame.SetBorder(false)
-	frame.SetBackgroundColor(Styles.ContrastBackgroundColor)
+	frame.SetBackgroundColor(Styles.PrimitiveBackgroundColor)
 	m.frame = frame
 
 	return m

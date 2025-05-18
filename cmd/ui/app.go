@@ -72,18 +72,12 @@ func (a *App) Run() error {
 	return nil
 }
 
-// newHomePage creates the home page of the TUI application.
-// Left side shows the watch list, right side shows the collection view. Default is watching collections.
-func (a *App) NewHomePage() *tview.Flex {
-	return a.NewListPage(api.Watching)
-}
-
 // NewListPage creates a list with detail page for a specific collection type.
 func (a *App) NewListPage(collectionStatus api.CollectionStatus) *tview.Flex {
 	mainTextStyle := tcell.StyleDefault.Foreground(ui.Styles.PrimaryTextColor).Background(ui.Styles.PrimitiveBackgroundColor)
 	collectionList := tview.NewList().SetMainTextStyle(mainTextStyle)
 	collectionList.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
-	collectionList.SetBorder(true).SetTitle(fmt.Sprintf("%s List", collectionStatus)).SetTitleAlign(tview.AlignLeft)
+	collectionList.SetBorder(true).SetTitle(fmt.Sprintf("List %s", collectionStatus)).SetTitleAlign(tview.AlignLeft)
 
 	options := list.UserListOptions{
 		CollectionType: collectionStatus,
@@ -96,7 +90,7 @@ func (a *App) NewListPage(collectionStatus api.CollectionStatus) *tview.Flex {
 	userCollections, err := list.ListUserCollection(a.User.Client, options)
 	if err != nil {
 		slog.Error("Failed to fetch collections", "Error", err)
-		return tview.NewFlex()
+		return nil
 	}
 	a.UserCollections[collectionStatus] = userCollections.Data
 	collections := a.UserCollections[collectionStatus]
@@ -109,7 +103,7 @@ func (a *App) NewListPage(collectionStatus api.CollectionStatus) *tview.Flex {
 		collectionList.AddItem(name, "", 0, nil)
 	}
 
-	collectionView := newCollectionView(&api.UserCollections{Data: collections})
+	collectionView := newCollectionDetail(&collections[0])
 
 	pages := tview.NewPages()
 	pages.AddAndSwitchToPage("view", collectionView, true)
@@ -118,14 +112,17 @@ func (a *App) NewListPage(collectionStatus api.CollectionStatus) *tview.Flex {
 	collectionList.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
 		if index >= 0 && index < len(collections) {
 			collection := collections[index]
-			slog.Info(fmt.Sprintf("Selected %s", collection.Subject.Name))
-			collectionView.SetText(createCollectionText(collection))
+			slog.Debug(fmt.Sprintf("Selected %s", collection.Subject.Name))
+			collectionView.SetText(createCollectionText(&collection))
 		}
 	})
 
+	// The flex layout for the collection page
 	collectionPage := tview.NewFlex().
-		AddItem(collectionList, 0, 1, true).
-		AddItem(pages, 0, 2, false)
+		AddItem(collectionList, 0, 2, true).
+		AddItem(pages, 0, 3, false)
+	collectionPage.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
+	collectionPage.SetFullScreen(true).SetBorderPadding(0, 0, 0, 0)
 
 	// Update the input capture to use numeric keys for switching pages
 	collectionPage.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -193,13 +190,41 @@ func (a *App) NewHelpPage() *tview.TextView {
 	return welcomePage
 }
 
-// newCollectionView creates a view for the selected collection.
-func newCollectionView(userCollections *api.UserCollections) *tview.TextView {
+// newCollectionDetail creates a text view for the selected collection.
+func newCollectionDetail(userCollection *api.UserSubjectCollection) *tview.TextView {
 	subjectView := tview.NewTextView().SetDynamicColors(true).SetWrap(true)
+	subjectView.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
 	subjectView.SetBorder(true).SetTitle("Subject Info").SetTitleAlign(tview.AlignLeft)
-	firstCollection := userCollections.Data[0]
-	subjectView.SetText(createCollectionText(firstCollection))
+	subjectView.SetText(createCollectionText(userCollection))
 	return subjectView
+}
+
+// createCollectionText generates the text to display details of a collection.
+func createCollectionText(c *api.UserSubjectCollection) string {
+	text := fmt.Sprintf("[yellow]%s[-]\n%s\n\n%s\n", c.Subject.NameCn, c.Subject.Name, c.Subject.ShortSummary)
+	tags := strings.Join(c.Tags, ", ")
+	text += fmt.Sprintf("\nYour Tags: [green]%s[-]\n", tags)
+	if c.Rate == 0 {
+		text += "Your Rate: [blue]N/A[-]\n"
+	} else {
+		text += fmt.Sprintf("Your Rate: [blue]%d[-]\n", c.Rate)
+	}
+	totalEp := "Unknown"
+	if c.Subject.Eps != 0 {
+		totalEp = fmt.Sprintf("%d", c.Subject.Eps)
+	}
+	text += fmt.Sprintf("Episodes Watched: %d of %s\n", c.EpStatus, totalEp)
+	if c.Subject.Type == 1 { // Book
+		totalVol := "Unknown"
+		if c.Subject.Volumes != 0 {
+			totalVol = fmt.Sprintf("%d", c.Subject.Volumes)
+		}
+		text += fmt.Sprintf("Volumes Read: %d of %s\n", c.VolStatus, totalVol)
+	}
+	text += fmt.Sprintf("On Aired: %s\n", c.Subject.Date)
+	text += fmt.Sprintf("User Score: %.1f\n", c.Subject.Score)
+
+	return text
 }
 
 func (a *App) NewEditModel(collection api.UserSubjectCollection) *ui.Modal {
@@ -232,8 +257,8 @@ func (a *App) NewEditModel(collection api.UserSubjectCollection) *ui.Modal {
 	return modal
 }
 
+// createForm creates a form for editing the collection.
 func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *tview.Form {
-	// FIXME: inputs 'e' when entering edit mode. Change focus or something.
 	// FIXME: should disable shortcuts when in form
 	status := util.IndexOfString(STATUS_LIST, collection.GetStatus().String())
 	initTags := collection.GetTags()
@@ -241,6 +266,7 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 
 	form := tview.NewForm()
 	form.SetBorder(true).SetTitle("Edit Collection").SetTitleAlign(tview.AlignLeft)
+	form.SetFieldBackgroundColor(ui.Styles.ContrastSecondaryTextColor)
 	form.AddInputField("Episodes watched", util.Uint32ToString(collection.EpStatus), 5, nil, func(text string) {
 		epStatus, err := strconv.Atoi(text)
 		if err != nil {
@@ -253,11 +279,11 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 		slog.Debug(fmt.Sprintf("selected %s", option))
 		collection.SetStatus(api.CollectionStatus(option))
 	})
-	form.AddInputField("Tags", initTags, 20, nil, func(text string) {
+	form.AddInputField("Tags", initTags, 0, nil, func(text string) {
 		// TODO: validate tags
 		collection.Tags = strings.Split(text, " ")
 	})
-	form.AddInputField("Rate", util.Uint32ToString(collection.Rate), 2, nil, func(text string) {
+	form.AddInputField("Rate", util.Uint32ToString(collection.Rate), 3, nil, func(text string) {
 		rate, err := strconv.Atoi(text)
 		if err != nil {
 			slog.Error(fmt.Sprintf("invalid rate %s. Must be in [0-10]", text))
@@ -265,7 +291,7 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 		rate = max(0, min(10, rate))
 		collection.Rate = uint32(rate)
 	})
-	form.AddInputField("Comment", collection.Comment, 20, nil, func(text string) {
+	form.AddInputField("Comment", collection.Comment, 0, nil, func(text string) {
 		collection.Comment = text
 	})
 	form.AddCheckbox("Private", collection.Private, func(checked bool) {
