@@ -18,11 +18,13 @@ import (
 	"github.com/iucario/bangumi-go/internal/ui"
 )
 
+var STATUS_LIST = []string{"wish", "done", "watching", "stashed", "dropped"}
+
 type App struct {
 	*tview.Application
 	Pages           *tview.Pages
 	User            *api.User
-	UserCollections []api.UserSubjectCollection
+	UserCollections map[api.CollectionStatus][]api.UserSubjectCollection
 }
 
 func NewApp(user *api.User) *App {
@@ -31,9 +33,17 @@ func NewApp(user *api.User) *App {
 		Application: tview.NewApplication(),
 		Pages:       tview.NewPages(),
 		User:        user,
+		UserCollections: map[api.CollectionStatus][]api.UserSubjectCollection{
+			api.Watching: {},
+			api.Wish:     {},
+			api.Done:     {},
+			api.OnHold:   {},
+			api.Dropped:  {},
+		},
 	}
 }
 
+// Run starts the TUI application with watching list and sets up the main pages.
 func (a *App) Run() error {
 	options := list.UserListOptions{
 		SubjectType:    "all",
@@ -46,9 +56,14 @@ func (a *App) Run() error {
 	if err != nil {
 		return err
 	}
-	a.UserCollections = userCollections.Data
+	a.UserCollections[api.Watching] = userCollections.Data
 
-	a.Pages.AddAndSwitchToPage("home", a.NewHomePage(), true)
+	// Add separate pages for each collection type
+	a.Pages.AddAndSwitchToPage("watching", a.NewListPage(api.Watching), true)
+	a.Pages.AddPage("wish", a.NewListPage(api.Wish), true, false)
+	a.Pages.AddPage("done", a.NewListPage(api.Done), true, false)
+	a.Pages.AddPage("stashed", a.NewListPage(api.OnHold), true, false)
+	a.Pages.AddPage("dropped", a.NewListPage(api.Dropped), true, false)
 	a.Pages.AddPage("help", a.NewHelpPage(), true, false)
 
 	if err := a.Application.SetRoot(a.Pages, true).SetFocus(a.Pages).Run(); err != nil {
@@ -58,45 +73,96 @@ func (a *App) Run() error {
 }
 
 // newHomePage creates the home page of the TUI application.
-// Left side shows the watch list, right side shows the collection view.
+// Left side shows the watch list, right side shows the collection view. Default is watching collections.
 func (a *App) NewHomePage() *tview.Flex {
-	watchList := a.NewWatchList()
-	collectionView := newCollectionView(&api.UserCollections{Data: a.UserCollections})
+	return a.NewListPage(api.Watching)
+}
+
+// NewListPage creates a list with detail page for a specific collection type.
+func (a *App) NewListPage(collectionStatus api.CollectionStatus) *tview.Flex {
+	mainTextStyle := tcell.StyleDefault.Foreground(ui.Styles.PrimaryTextColor).Background(ui.Styles.PrimitiveBackgroundColor)
+	collectionList := tview.NewList().SetMainTextStyle(mainTextStyle)
+	collectionList.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
+	collectionList.SetBorder(true).SetTitle(fmt.Sprintf("%s List", collectionStatus)).SetTitleAlign(tview.AlignLeft)
+
+	options := list.UserListOptions{
+		CollectionType: collectionStatus,
+		Username:       a.User.Username,
+		SubjectType:    "all",
+		Limit:          20,
+		Offset:         0,
+	}
+
+	userCollections, err := list.ListUserCollection(a.User.Client, options)
+	if err != nil {
+		slog.Error("Failed to fetch collections", "Error", err)
+		return tview.NewFlex()
+	}
+	a.UserCollections[collectionStatus] = userCollections.Data
+	collections := a.UserCollections[collectionStatus]
+
+	for _, collection := range collections {
+		name := collection.Subject.NameCn
+		if name == "" {
+			name = collection.Subject.Name
+		}
+		collectionList.AddItem(name, "", 0, nil)
+	}
+
+	collectionView := newCollectionView(&api.UserCollections{Data: collections})
 
 	pages := tview.NewPages()
 	pages.AddAndSwitchToPage("view", collectionView, true)
 
 	// Update subject info when an item is selected
-	watchList.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
-		if index >= 0 && index < len(a.UserCollections) {
-			collection := a.UserCollections[index]
+	collectionList.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+		if index >= 0 && index < len(collections) {
+			collection := collections[index]
 			slog.Info(fmt.Sprintf("Selected %s", collection.Subject.Name))
 			collectionView.SetText(createCollectionText(collection))
 		}
 	})
 
-	collectionView.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
-
-	homePage := tview.NewFlex().
-		AddItem(watchList, 0, 1, true).
+	collectionPage := tview.NewFlex().
+		AddItem(collectionList, 0, 1, true).
 		AddItem(pages, 0, 2, false)
 
-	homePage.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	// Update the input capture to use numeric keys for switching pages
+	collectionPage.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyRune:
 			switch event.Rune() {
+			case 'j':
+				collectionList.SetCurrentItem((collectionList.GetCurrentItem() + 1) % len(collections))
+			case 'k':
+				collectionList.SetCurrentItem((collectionList.GetCurrentItem() - 1) % len(collections))
+			case '?':
+				a.Pages.SwitchToPage("help")
+			case '1':
+				a.Pages.SwitchToPage("watching")
+			case '2':
+				a.Pages.SwitchToPage("wish")
+			case '3':
+				a.Pages.SwitchToPage("done")
+			case '4':
+				a.Pages.SwitchToPage("stashed")
+			case '5':
+				a.Pages.SwitchToPage("dropped")
 			case 'e':
-				slog.Info("edit")
-				index := watchList.GetCurrentItem()
-				modal := a.NewEditModel(a.UserCollections[index])
+				slog.Debug("edit")
+				index := collectionList.GetCurrentItem()
+				modal := a.NewEditModel(collections[index])
 				a.Pages.AddPage("edit", modal, true, true) // Add modal as an overlay
 				a.SetFocus(modal)                          // Set focus to the modal
+			case 'r': // Refresh the list
+				slog.Debug("refresh")
+				// TODO: implement refresh logic
 			}
 		}
 		return event
 	})
 
-	return homePage
+	return collectionPage
 }
 
 func (a *App) NewHelpPage() *tview.TextView {
@@ -125,81 +191,6 @@ func (a *App) NewHelpPage() *tview.TextView {
 		return event
 	})
 	return welcomePage
-}
-
-// newWatchList creates a list of user collections titles.
-func (a *App) NewWatchList() *tview.List {
-	mainTextStyle := tcell.StyleDefault.Foreground(ui.Styles.PrimaryTextColor).Background(ui.Styles.PrimitiveBackgroundColor)
-	watchList := tview.NewList().SetMainTextStyle(mainTextStyle)
-	watchList.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
-	watchList.SetBorder(true).SetTitle("Watch List").SetTitleAlign(tview.AlignLeft)
-	for _, collection := range a.UserCollections {
-		name := collection.Subject.NameCn
-		if name == "" {
-			name = collection.Subject.Name
-		}
-		watchList.AddItem(name, "", 0, nil)
-	}
-
-	// Define options locally within the NewWatchList function
-	options := list.UserListOptions{
-		SubjectType:    "all",
-		Username:       a.User.Username,
-		CollectionType: api.Watching,
-		Limit:          20,
-		Offset:         0,
-	}
-
-	// Add a shortcut to switch collection types and update the watch list title accordingly
-	watchList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyRune:
-			switch event.Rune() {
-			case '?':
-				a.Pages.SwitchToPage("help")
-			case 'j':
-				watchList.SetCurrentItem(watchList.GetCurrentItem() + 1)
-			case 'k':
-				watchList.SetCurrentItem(watchList.GetCurrentItem() - 1)
-			case 't': // Shortcut to switch collection types
-				currentType := options.CollectionType
-				newType := api.Watching // Default to Watching
-				switch currentType {
-				case api.Watching:
-					newType = api.Wish
-				case api.Wish:
-					newType = api.Done
-				case api.Done:
-					newType = api.OnHold
-				case api.OnHold:
-					newType = api.Dropped
-				case api.Dropped:
-					newType = api.All
-				case api.All:
-					newType = api.Watching
-				}
-				options.CollectionType = newType
-				userCollections, err := list.ListUserCollection(a.User.Client, options)
-				if err != nil {
-					slog.Error("Failed to fetch collections", "Error", err)
-					return event
-				}
-				a.UserCollections = userCollections.Data
-				watchList.Clear()
-				for _, collection := range a.UserCollections {
-					name := collection.Subject.NameCn
-					if name == "" {
-						name = collection.Subject.Name
-					}
-					watchList.AddItem(name, "", 0, nil)
-				}
-				watchList.SetTitle(fmt.Sprintf("List (%s)", newType))
-			}
-		}
-		return event
-	})
-
-	return watchList
 }
 
 // newCollectionView creates a view for the selected collection.
@@ -244,9 +235,9 @@ func (a *App) NewEditModel(collection api.UserSubjectCollection) *ui.Modal {
 func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *tview.Form {
 	// FIXME: inputs 'e' when entering edit mode. Change focus or something.
 	// FIXME: should disable shortcuts when in form
-	statusList := []string{"wish", "done", "watching", "stashed", "dropped"}
-	status := util.IndexOfString(statusList, collection.GetStatus().String())
+	status := util.IndexOfString(STATUS_LIST, collection.GetStatus().String())
 	initTags := collection.GetTags()
+	collectionStatus := collection.GetStatus()
 
 	form := tview.NewForm()
 	form.SetBorder(true).SetTitle("Edit Collection").SetTitleAlign(tview.AlignLeft)
@@ -258,7 +249,7 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 		collection.EpStatus = uint32(epStatus)
 	})
 
-	form.AddDropDown("Status", statusList, status, func(option string, optionIndex int) {
+	form.AddDropDown("Status", STATUS_LIST, status, func(option string, optionIndex int) {
 		slog.Debug(fmt.Sprintf("selected %s", option))
 		collection.SetStatus(api.CollectionStatus(option))
 	})
@@ -296,15 +287,19 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 		subject.WatchToEpisode(credential.AccessToken, int(collection.SubjectID), int(collection.EpStatus))
 
 		// Reorder the list and update the data in the watch list
-		updatedIndex := indexOfCollection(a.UserCollections, collection.SubjectID)
+		collections := a.UserCollections[collectionStatus]
+		updatedIndex := indexOfCollection(collections, collection.SubjectID)
 		if updatedIndex != -1 {
-			newCollections := reorderedSlice(a.UserCollections, updatedIndex)
-			a.UserCollections = newCollections
-			a.UserCollections[0] = collection
-			watchList := a.NewWatchList()
-			watchList.SetCurrentItem(0)
-			a.Pages.RemovePage("home")
-			a.Pages.AddAndSwitchToPage("home", a.NewHomePage(), true)
+			newCollections := reorderedSlice(collections, updatedIndex)
+			collections = newCollections
+			collections[0] = collection
+			// Update the page
+			// FIXME: not updating the other pages
+			newPage := a.NewListPage(collectionStatus)
+			a.Pages.RemovePage(collectionStatus.String())
+			a.Pages.AddPage(collectionStatus.String(), newPage, true, false)
+			a.Pages.SwitchToPage(collectionStatus.String())
+			a.SetFocus(newPage)
 		}
 
 		// Back to home page
