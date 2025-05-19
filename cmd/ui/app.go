@@ -104,7 +104,10 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 	}
 
 	// Initialize the first item's detail view
-	detailView := newCollectionDetail(&collections[0])
+	detailView := newCollectionDetail(nil)
+	if len(collections) > 0 {
+		detailView = newCollectionDetail(&collections[0])
+	}
 	detailView.SetScrollable(true)
 
 	// Update subject info when an item is selected
@@ -235,6 +238,9 @@ func newCollectionDetail(userCollection *api.UserSubjectCollection) *tview.TextV
 
 // createCollectionText generates the text to display details of a collection.
 func createCollectionText(c *api.UserSubjectCollection) string {
+	if c == nil {
+		return "No data"
+	}
 	colorToStr := func(color tcell.Color) string {
 		r, g, b := color.RGB()
 		return fmt.Sprintf("#%02X%02X%02X", r, g, b)
