@@ -144,16 +144,6 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 				a.SetFocus(listView)
 			case '?':
 				a.Pages.SwitchToPage("help")
-			case '1':
-				a.Pages.SwitchToPage("watching")
-			case '2':
-				a.Pages.SwitchToPage("wish")
-			case '3':
-				a.Pages.SwitchToPage("done")
-			case '4':
-				a.Pages.SwitchToPage("stashed")
-			case '5':
-				a.Pages.SwitchToPage("dropped")
 			case 'e':
 				slog.Debug("edit")
 				index := listView.GetCurrentItem()
@@ -163,6 +153,8 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 			case 'r': // Refresh the list
 				slog.Debug("refresh")
 				// TODO: implement refresh logic
+			case '1', '2', '3', '4', '5', 'q', 'Q':
+				a.handlePageSwitch(event.Rune())
 			}
 		}
 		return event
@@ -206,20 +198,8 @@ func (a *App) NewHelpPage() *tview.TextView {
 	welcomePage := tview.NewTextView().SetText(text)
 
 	welcomePage.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyRune:
-			switch event.Rune() {
-			case '1':
-				a.Pages.SwitchToPage("watching")
-			case '2':
-				a.Pages.SwitchToPage("wish")
-			case '3':
-				a.Pages.SwitchToPage("done")
-			case '4':
-				a.Pages.SwitchToPage("stashed")
-			case '5':
-				a.Pages.SwitchToPage("dropped")
-			}
+		if event.Key() == tcell.KeyRune {
+			a.handlePageSwitch(event.Rune())
 		}
 		return event
 	})
@@ -234,36 +214,37 @@ func newCollectionDetail(userCollection *api.UserSubjectCollection) *tview.TextV
 	return subjectView
 }
 
-// createCollectionText generates the text to display details of a collection.
+// Refactor colorToStr function to a utility function in the ui package
+func colorToHex(color tcell.Color) string {
+	r, g, b := color.RGB()
+	return fmt.Sprintf("#%02X%02X%02X", r, g, b)
+}
+
+// Update createCollectionText to use the new utility function
 func createCollectionText(c *api.UserSubjectCollection) string {
 	if c == nil {
 		return "No data"
 	}
-	colorToStr := func(color tcell.Color) string {
-		r, g, b := color.RGB()
-		return fmt.Sprintf("#%02X%02X%02X", r, g, b)
+	rate := fmt.Sprintf("%d", c.Rate)
+	if c.Rate == 0 {
+		rate = "Unknown"
 	}
-
-	text := fmt.Sprintf("[%s]%s[-]\n%s\n\n", colorToStr(ui.Styles.SecondaryTextColor), c.Subject.NameCn, c.Subject.Name)
+	totalEp := fmt.Sprintf("%d", c.Subject.Eps)
+	if c.Subject.Eps != 0 {
+		totalEp = "Unknown"
+	}
+	text := fmt.Sprintf("[%s]%s[-]\n%s\n\n", colorToHex(ui.Styles.SecondaryTextColor), c.Subject.NameCn, c.Subject.Name)
 	text += fmt.Sprintf("%s\n", api.SubjectTypeRev[int(c.Subject.Type)])
 	text += fmt.Sprintf("%s\n", c.Subject.ShortSummary)
-	text += fmt.Sprintf("\nYour Tags: [%s]%s[-]\n", colorToStr(ui.Styles.TertiaryTextColor), c.GetTags())
-	rate := "Unknown"
-	if c.Rate != 0 {
-		rate = fmt.Sprintf("%d", c.Rate)
-	}
-	text += fmt.Sprintf("Your Rate: [%s]%s[-]\n", colorToStr(ui.Styles.TertiaryTextColor), rate)
-	totalEp := "Unknown"
-	if c.Subject.Eps != 0 {
-		totalEp = fmt.Sprintf("%d", c.Subject.Eps)
-	}
-	text += fmt.Sprintf("Episodes Watched: [%s]%d[-] of %s\n", colorToStr(ui.Styles.TertiaryTextColor), c.EpStatus, totalEp)
+	text += fmt.Sprintf("\nYour Tags: [%s]%s[-]\n", colorToHex(ui.Styles.TertiaryTextColor), c.GetTags())
+	text += fmt.Sprintf("Your Rate: [%s]%s[-]\n", colorToHex(ui.Styles.TertiaryTextColor), rate)
+	text += fmt.Sprintf("Episodes Watched: [%s]%d[-] of %s\n", colorToHex(ui.Styles.TertiaryTextColor), c.EpStatus, totalEp)
 	if c.Subject.Type == 1 { // Book
 		totalVol := "Unknown"
 		if c.Subject.Volumes != 0 {
 			totalVol = fmt.Sprintf("%d", c.Subject.Volumes)
 		}
-		text += fmt.Sprintf("Volumes Read: [%s]%d[-] of %s\n", colorToStr(ui.Styles.TertiaryTextColor), c.VolStatus, totalVol)
+		text += fmt.Sprintf("Volumes Read: [%s]%d[-] of %s\n", colorToHex(ui.Styles.TertiaryTextColor), c.VolStatus, totalVol)
 	}
 	text += "\n---------------------------------------\n\n"
 	text += fmt.Sprintf("On Air Date: %s\n", c.Subject.Date)
@@ -402,4 +383,21 @@ func reorderedSlice(collections []api.UserSubjectCollection, index int) []api.Us
 	collection := collections[index]
 	collections = slices.Delete(collections, index, index+1)
 	return append([]api.UserSubjectCollection{collection}, collections...)
+}
+
+func (a *App) handlePageSwitch(key rune) {
+	switch key {
+	case '1':
+		a.Pages.SwitchToPage("watching")
+	case '2':
+		a.Pages.SwitchToPage("wish")
+	case '3':
+		a.Pages.SwitchToPage("done")
+	case '4':
+		a.Pages.SwitchToPage("stashed")
+	case '5':
+		a.Pages.SwitchToPage("dropped")
+	case 'q', 'Q':
+		a.Stop()
+	}
 }
