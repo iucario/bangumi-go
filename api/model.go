@@ -14,6 +14,8 @@ func (c CollectionStatus) String() string {
 type SubjectT string
 type EpisodeStatus string
 
+var C_STATUS = []CollectionStatus{Watching, Wish, Done, OnHold, Dropped}
+
 const (
 	Wish     CollectionStatus = "wish"
 	Done     CollectionStatus = "done"

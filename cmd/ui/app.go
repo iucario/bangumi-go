@@ -47,19 +47,6 @@ func NewApp(user *api.User) *App {
 
 // Run starts the TUI application with watching list and sets up the main pages.
 func (a *App) Run() error {
-	options := list.UserListOptions{
-		SubjectType:    "all",
-		Username:       a.User.Username,
-		CollectionType: api.Watching,
-		Limit:          20,
-		Offset:         0,
-	}
-	userCollections, err := list.ListUserCollection(a.User.Client, options)
-	if err != nil {
-		return err
-	}
-	a.UserCollections[api.Watching] = userCollections.Data
-
 	// Add separate pages for each collection type
 	a.Pages.AddAndSwitchToPage("watching", a.NewCollectionPage(api.Watching), true)
 	a.Pages.AddPage("wish", a.NewCollectionPage(api.Wish), true, false)
@@ -150,9 +137,9 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 				modal := a.NewEditModel(collections[index])
 				a.Pages.AddPage("edit", modal, true, true) // Add modal as an overlay
 				a.SetFocus(modal)                          // Set focus to the modal
-			case 'r': // Refresh the list
+			case 'R': // Refresh the list
 				slog.Debug("refresh")
-				// TODO: implement refresh logic
+				a.ReloadCollection()
 			case '1', '2', '3', '4', '5', 'q', 'Q':
 				a.handlePageSwitch(event.Rune())
 			}
@@ -161,6 +148,48 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 	})
 
 	return collectionPage
+}
+
+func (a *App) NewHelpPage() *tview.TextView {
+	text := `Welcome to Bangumi CLI UI
+	Shortcuts:
+
+	[General]
+	1: Go to watching list
+	2: Go to wish list
+	3: Go to done list
+	4: Go to stashed list
+	5: Go to dropped list
+	?: Show this help
+	j/up: Move up
+	k/down: Move down
+	h/left: Switch to left
+	l/right: Switch to right
+	q/Q: Quit
+
+	[Collection List]
+	e: Edit collection
+	shift + r: Refresh list
+	`
+	welcomePage := tview.NewTextView().SetText(text)
+
+	welcomePage.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyRune {
+			a.handlePageSwitch(event.Rune())
+		}
+		return event
+	})
+	return welcomePage
+}
+
+// ReloadCollection recreates the user collection pages.
+func (a *App) ReloadCollection() {
+	currentPageName, _ := a.Pages.GetFrontPage()
+	for _, status := range STATUS_LIST {
+		a.Pages.RemovePage(status)
+		a.Pages.AddPage(status, a.NewCollectionPage(api.CollectionStatus(status)), true, false)
+	}
+	a.Pages.SwitchToPage(currentPageName)
 }
 
 // handleScrollKeys captures input events for the Box and handles 'j' and 'k' keys.
@@ -174,36 +203,6 @@ func handleScrollKeys(b tview.Primitive) func(event *tcell.EventKey) *tcell.Even
 		}
 		return event
 	}
-}
-
-func (a *App) NewHelpPage() *tview.TextView {
-	text := `Welcome to Bangumi CLI UI
-	Shortcuts:
-
-	[Navigation]
-	1: Go to watching list
-	2: Go to wish list
-	3: Go to done list
-	4: Go to stashed list
-	5: Go to dropped list
-	?: Show this help
-	j/up: Move up
-	k/down: Move down
-	h/left: Switch to left
-	l/right: Switch to right
-
-	[Collection List]
-	e: Edit collection
-	`
-	welcomePage := tview.NewTextView().SetText(text)
-
-	welcomePage.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyRune {
-			a.handlePageSwitch(event.Rune())
-		}
-		return event
-	})
-	return welcomePage
 }
 
 // newCollectionDetail creates a text view for the selected collection.
