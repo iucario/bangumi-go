@@ -19,12 +19,15 @@ import (
 )
 
 var STATUS_LIST = []string{"wish", "done", "watching", "stashed", "dropped"}
+var PAGE_SIZE = 20
 
 type App struct {
 	*tview.Application
 	Pages           *tview.Pages
 	User            *api.User
 	UserCollections map[api.CollectionStatus][]api.UserSubjectCollection
+	listViews       map[api.CollectionStatus]*tview.List
+	collectionTotal map[api.CollectionStatus]int
 }
 
 func NewApp(user *api.User) *App {
@@ -42,6 +45,8 @@ func NewApp(user *api.User) *App {
 			api.OnHold:   {},
 			api.Dropped:  {},
 		},
+		listViews:       map[api.CollectionStatus]*tview.List{},
+		collectionTotal: map[api.CollectionStatus]int{},
 	}
 }
 
@@ -66,11 +71,14 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 	listView := tview.NewList()
 	listView.SetBorder(true).SetTitle(fmt.Sprintf("List %s", collectionStatus)).SetTitleAlign(tview.AlignLeft)
 
+	// Store list view reference for pagination
+	a.listViews[collectionStatus] = listView
+
 	options := list.UserListOptions{
 		CollectionType: collectionStatus,
 		Username:       a.User.Username,
 		SubjectType:    "all",
-		Limit:          20,
+		Limit:          PAGE_SIZE,
 		Offset:         0,
 	}
 	userCollections, err := list.ListUserCollection(a.User.Client, options)
@@ -79,7 +87,11 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 		return nil
 	}
 	a.UserCollections[collectionStatus] = userCollections.Data
+	a.collectionTotal[collectionStatus] = int(userCollections.Total)
 	collections := a.UserCollections[collectionStatus]
+
+	// Update title to show total items
+	listView.SetTitle(fmt.Sprintf("List %s (%d/%d)", collectionStatus, len(collections), userCollections.Total))
 
 	// TODO: move this to collection function
 	for _, collection := range collections {
@@ -133,6 +145,10 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 				a.Pages.SwitchToPage("help")
 			case 'e':
 				slog.Debug("edit")
+				if len(collections) == 0 {
+					slog.Warn("No collection to edit")
+					return event
+				}
 				index := listView.GetCurrentItem()
 				modal := a.NewEditModel(collections[index])
 				a.Pages.AddPage("edit", modal, true, true) // Add modal as an overlay
@@ -140,6 +156,9 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 			case 'R': // Refresh the list
 				slog.Debug("refresh")
 				a.ReloadCollection()
+			case 'n': // Next page
+				slog.Debug("next page")
+				a.LoadPage(collectionStatus)
 			case '1', '2', '3', '4', '5', 'q', 'Q':
 				a.handlePageSwitch(event.Rune())
 			}
@@ -170,6 +189,7 @@ func (a *App) NewHelpPage() *tview.TextView {
 	[Collection List]
 	e: Edit collection
 	shift + r: Refresh list
+	n: Load next page
 	`
 	welcomePage := tview.NewTextView().SetText(text)
 
@@ -180,6 +200,51 @@ func (a *App) NewHelpPage() *tview.TextView {
 		return event
 	})
 	return welcomePage
+}
+
+// LoadPage loads next page of a collection list
+func (a *App) LoadPage(collectionStatus api.CollectionStatus) {
+	size := len(a.UserCollections[collectionStatus])
+	total := a.collectionTotal[collectionStatus]
+
+	// Don't load more if we have all items
+	if size >= total {
+		slog.Info("No more items to load")
+		return
+	}
+
+	options := list.UserListOptions{
+		CollectionType: collectionStatus,
+		Username:       a.User.Username,
+		SubjectType:    "all",
+		Limit:          PAGE_SIZE,
+		Offset:         size,
+	}
+	c, err := list.ListUserCollection(a.User.Client, options)
+	if err != nil {
+		slog.Error("Failed to fetch collections", "Error", err)
+		return
+	}
+
+	// Update collections and list view
+	a.UserCollections[collectionStatus] = append(a.UserCollections[collectionStatus], c.Data...)
+	listView := a.listViews[collectionStatus]
+	if listView == nil {
+		slog.Error("List view not found")
+		return
+	}
+
+	// Add new items to list view
+	for _, collection := range c.Data {
+		name := collection.Subject.NameCn
+		if name == "" {
+			name = collection.Subject.Name
+		}
+		listView.AddItem(name, "", 0, nil)
+	}
+
+	// Update title to show progress
+	listView.SetTitle(fmt.Sprintf("List %s (%d/%d)", collectionStatus, len(a.UserCollections[collectionStatus]), total))
 }
 
 // ReloadCollection recreates the user collection pages.

@@ -24,7 +24,7 @@ Bangumi CLI and TUI in Golang
 Build
 
 ```sh
-go build -ldflags "-X 'github.com/iucario/bangumi-go/cmd.Version=v0.0.1'" -o dist/bgm-cli
+go build -ldflags "-X 'github.com/iucario/bangumi-go/cmd.Version=v0.0.1'" -o dist/bgm
 ```
 
 Lint
