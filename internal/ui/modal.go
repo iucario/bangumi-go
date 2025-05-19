@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"math"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -33,19 +35,10 @@ type Modal struct {
 // NewModalForm returns a new form modal.
 func NewModalForm(_ string, form *tview.Form) *Modal {
 	m := &Modal{
-		Box:       tview.NewBox().SetBackgroundColor(Styles.PrimitiveBackgroundColor),
+		Box:       tview.NewBox(),
 		textColor: Styles.PrimaryTextColor,
 	}
 	m.form = form
-	m.form.SetBackgroundColor(Styles.PrimitiveBackgroundColor)
-
-	// Set background color for each input field
-	// form.SetFieldBackgroundColor does not work for short input fields
-	for i := range form.GetFormItemCount() {
-		if inputField, ok := form.GetFormItem(i).(*tview.InputField); ok {
-			inputField.SetBackgroundColor(Styles.PrimitiveBackgroundColor)
-		}
-	}
 
 	m.form.SetCancelFunc(func() {
 		if m.done != nil {
@@ -54,7 +47,6 @@ func NewModalForm(_ string, form *tview.Form) *Modal {
 	})
 	frame := tview.NewFrame(m.form)
 	frame.SetBorder(false)
-	frame.SetBackgroundColor(Styles.PrimitiveBackgroundColor)
 	m.frame = frame
 
 	return m
@@ -65,8 +57,8 @@ func (m *Modal) Draw(screen tcell.Screen) {
 	screenWidth, screenHeight := screen.Size()
 
 	// Calculate modal size based on form content
-	formWidth := 60                               // Minimum width for the form
-	formHeight := m.form.GetFormItemCount()*3 + 4 // Rough estimate of height needed
+	formWidth := int(math.Min(60, float64(screenWidth-4)))
+	formHeight := int(math.Min(float64(m.form.GetFormItemCount()*2+3), float64(screenHeight-4)))
 
 	// Set the modal's position and size
 	width := formWidth + 4   // Add padding

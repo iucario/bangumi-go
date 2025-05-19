@@ -31,8 +31,8 @@ var color = map[string]int32{
 
 var Styles = tview.Theme{
 	PrimitiveBackgroundColor:    tcell.NewHexColor(color["background"]),
-	ContrastBackgroundColor:     tcell.NewHexColor(color["cyan"]),
-	MoreContrastBackgroundColor: tcell.NewHexColor(color["background"]),
+	ContrastBackgroundColor:     tcell.NewHexColor(color["blue"]),
+	MoreContrastBackgroundColor: tcell.NewHexColor(color["purple"]),
 	BorderColor:                 tcell.NewHexColor(color["white"]),
 	TitleColor:                  tcell.NewHexColor(color["white"]),
 	GraphicsColor:               tcell.NewHexColor(color["red"]),
@@ -40,5 +40,5 @@ var Styles = tview.Theme{
 	SecondaryTextColor:          tcell.NewHexColor(color["yellow"]),
 	TertiaryTextColor:           tcell.NewHexColor(color["green"]),
 	InverseTextColor:            tcell.NewHexColor(color["blue"]),
-	ContrastSecondaryTextColor:  tcell.NewHexColor(color["brightGreen"]),
+	ContrastSecondaryTextColor:  tcell.NewHexColor(color["white"]),
 }

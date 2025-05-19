@@ -29,6 +29,8 @@ type App struct {
 
 func NewApp(user *api.User) *App {
 	slog.Debug("New App", "User:", user)
+	// Override the default styles
+	tview.Styles = ui.Styles
 	return &App{
 		Application: tview.NewApplication(),
 		Pages:       tview.NewPages(),
@@ -74,9 +76,7 @@ func (a *App) Run() error {
 
 // NewCollectionPage creates a list with detail page for a specific collection type.
 func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Flex {
-	mainTextStyle := tcell.StyleDefault.Foreground(ui.Styles.PrimaryTextColor).Background(ui.Styles.PrimitiveBackgroundColor)
-	listView := tview.NewList().SetMainTextStyle(mainTextStyle)
-	listView.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
+	listView := tview.NewList()
 	listView.SetBorder(true).SetTitle(fmt.Sprintf("List %s", collectionStatus)).SetTitleAlign(tview.AlignLeft)
 
 	options := list.UserListOptions{
@@ -123,7 +123,6 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 	collectionPage := tview.NewFlex().
 		AddItem(listView, 0, 2, true).
 		AddItem(detailView, 0, 3, false)
-	collectionPage.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
 	collectionPage.SetFullScreen(true).SetBorderPadding(0, 0, 0, 0)
 
 	// Scroll with j/k keys
@@ -230,7 +229,6 @@ func (a *App) NewHelpPage() *tview.TextView {
 // newCollectionDetail creates a text view for the selected collection.
 func newCollectionDetail(userCollection *api.UserSubjectCollection) *tview.TextView {
 	subjectView := tview.NewTextView().SetDynamicColors(true).SetWrap(true)
-	subjectView.SetBackgroundColor(ui.Styles.PrimitiveBackgroundColor)
 	subjectView.SetBorder(true).SetTitle("Subject Info").SetTitleAlign(tview.AlignLeft)
 	subjectView.SetText(createCollectionText(userCollection))
 	return subjectView
@@ -315,7 +313,6 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 
 	form := tview.NewForm()
 	form.SetBorder(true).SetTitle("Edit Collection").SetTitleAlign(tview.AlignLeft)
-	form.SetFieldBackgroundColor(ui.Styles.ContrastSecondaryTextColor)
 	form.AddInputField("Episodes watched", util.Uint32ToString(collection.EpStatus), 5, nil, func(text string) {
 		epStatus, err := strconv.Atoi(text)
 		if err != nil {
@@ -328,7 +325,7 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 		slog.Debug(fmt.Sprintf("selected %s", option))
 		collection.SetStatus(api.CollectionStatus(option))
 	})
-	form.AddInputField("Tags", initTags, 0, nil, func(text string) {
+	form.AddInputField("Tags(Separate by spaces)", initTags, 0, nil, func(text string) {
 		// TODO: validate tags
 		collection.Tags = strings.Split(text, " ")
 	})
