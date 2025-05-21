@@ -16,7 +16,7 @@ var calendarCmd = &cobra.Command{
 	Short: "Show calendar",
 	Run: func(cmd *cobra.Command, args []string) {
 		client := api.NewHTTPClient("")
-		calendars, err := getCalendar(client)
+		calendars, err := GetCalendar(client)
 		if err != nil {
 			cmd.PrintErr(err)
 			return
@@ -50,7 +50,7 @@ var calendarCmd = &cobra.Command{
 	},
 }
 
-func getCalendar(client *api.HTTPClient) ([]api.Calendar, error) {
+func GetCalendar(client *api.HTTPClient) ([]api.Calendar, error) {
 	url := "https://api.bgm.tv/calendar" // Calendar API endpoint has no '/v0'
 	bytes, err := client.Get(url)
 	if err != nil {

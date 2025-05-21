@@ -58,7 +58,8 @@ func (a *App) Run() error {
 	a.Pages.AddPage("done", a.NewCollectionPage(api.Done), true, false)
 	a.Pages.AddPage("stashed", a.NewCollectionPage(api.OnHold), true, false)
 	a.Pages.AddPage("dropped", a.NewCollectionPage(api.Dropped), true, false)
-	a.Pages.AddPage("help", a.NewHelpPage(), true, false)
+	a.Pages.AddPage("calendar", NewCalendarPage(a), true, false)
+	a.Pages.AddPage("help", NewHelpPage(a), true, false)
 
 	if err := a.Application.SetRoot(a.Pages, true).SetFocus(a.Pages).Run(); err != nil {
 		panic(err)
@@ -141,8 +142,6 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 				a.SetFocus(detailView)
 			case 'h':
 				a.SetFocus(listView)
-			case '?':
-				a.Pages.SwitchToPage("help")
 			case 'e':
 				slog.Debug("edit")
 				if len(collections) == 0 {
@@ -159,7 +158,7 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 			case 'n': // Next page
 				slog.Debug("next page")
 				a.LoadPage(collectionStatus)
-			case '1', '2', '3', '4', '5', 'q', 'Q':
+			default:
 				a.handlePageSwitch(event.Rune())
 			}
 		}
@@ -167,42 +166,6 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 	})
 
 	return collectionPage
-}
-
-func (a *App) NewHelpPage() *tview.TextView {
-	text := `Welcome to Bangumi CLI UI
-	Shortcuts:
-
-	[General]
-	1: Go to watching list
-	2: Go to wish list
-	3: Go to done list
-	4: Go to stashed list
-	5: Go to dropped list
-	6: Go to Calendar
-	7: Go to search
-	0: Go to user info
-	?: Show this help
-	j/up: Move up
-	k/down: Move down
-	h/left: Switch to left
-	l/right: Switch to right
-	q/Q: Quit
-
-	[Collection List]
-	e: Edit collection
-	shift + r: Refresh list
-	n: Load next page
-	`
-	welcomePage := tview.NewTextView().SetText(text)
-
-	welcomePage.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyRune {
-			a.handlePageSwitch(event.Rune())
-		}
-		return event
-	})
-	return welcomePage
 }
 
 // LoadPage loads next page of a collection list
@@ -275,7 +238,7 @@ func handleScrollKeys(b tview.Primitive) func(event *tcell.EventKey) *tcell.Even
 
 // newCollectionDetail creates a text view for the selected collection.
 func newCollectionDetail(userCollection *api.UserSubjectCollection) *tview.TextView {
-	subjectView := tview.NewTextView().SetDynamicColors(true).SetWrap(true)
+	subjectView := tview.NewTextView().SetDynamicColors(true).SetWrap(false)
 	subjectView.SetBorder(true).SetTitle("Subject Info").SetTitleAlign(tview.AlignLeft)
 	subjectView.SetText(createCollectionText(userCollection))
 	return subjectView
@@ -297,7 +260,7 @@ func createCollectionText(c *api.UserSubjectCollection) string {
 		rate = "Unknown"
 	}
 	totalEp := fmt.Sprintf("%d", c.Subject.Eps)
-	if c.Subject.Eps != 0 {
+	if c.Subject.Eps == 0 {
 		totalEp = "Unknown"
 	}
 	text := fmt.Sprintf("[%s]%s[-]\n%s\n\n", colorToHex(ui.Styles.SecondaryTextColor), c.Subject.NameCn, c.Subject.Name)
@@ -464,7 +427,11 @@ func (a *App) handlePageSwitch(key rune) {
 		a.Pages.SwitchToPage("stashed")
 	case '5':
 		a.Pages.SwitchToPage("dropped")
+	case '6':
+		a.Pages.SwitchToPage("calendar")
 	case 'q', 'Q':
 		a.Stop()
+	case '?':
+		a.Pages.SwitchToPage("help")
 	}
 }

@@ -14,6 +14,10 @@ var uiCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		authClient := api.NewAuthClientWithConfig()
 		user := api.NewUser(authClient)
+		if user == nil {
+			fmt.Println("Please login. Run `bgm auth login`")
+			return
+		}
 
 		app := NewApp(user)
 		err := app.Run()
