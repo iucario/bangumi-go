@@ -25,11 +25,15 @@ func NewRequestError(statusCode int, body []byte) *RequestError {
 	}
 }
 
+// HTTPClient is a simple HTTP client with authentication support.
+// Access token is optional.
 type HTTPClient struct {
 	http        *http.Client
 	AccessToken string
 }
 
+// NewHTTPClient creates a new HTTP client with the specified access token.
+// Leave access token empty will let the client send unauthenticated requests.
 func NewHTTPClient(accessToken string) *HTTPClient {
 	return &HTTPClient{
 		http:        &http.Client{},
@@ -82,6 +86,7 @@ func (c *HTTPClient) request(req *http.Request) ([]byte, error) {
 	return body, nil
 }
 
+// Deprecated
 func AuthenticatedGetRequest(url string, access_token string, data any) error {
 	req, err := buildAuthRequest("GET", url, access_token, nil)
 	if err != nil {

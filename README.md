@@ -16,6 +16,8 @@ Bangumi CLI and TUI in Golang
   Subject/Collection actions
 - `version`
   Print the version number of bgm-cli
+- `cal`
+  Show calendar (airing animes)
 - `ui`
   Start terminal UI
 

@@ -179,6 +179,9 @@ func (a *App) NewHelpPage() *tview.TextView {
 	3: Go to done list
 	4: Go to stashed list
 	5: Go to dropped list
+	6: Go to Calendar
+	7: Go to search
+	0: Go to user info
 	?: Show this help
 	j/up: Move up
 	k/down: Move down

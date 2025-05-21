@@ -15,6 +15,7 @@ type SubjectT string
 type EpisodeStatus string
 
 var C_STATUS = []CollectionStatus{Watching, Wish, Done, OnHold, Dropped}
+var S_Type = []SubjectT{Book, Anime, Music, Game, Real}
 
 const (
 	Wish     CollectionStatus = "wish"
@@ -23,6 +24,15 @@ const (
 	OnHold   CollectionStatus = "stashed"
 	Dropped  CollectionStatus = "dropped"
 	All      CollectionStatus = "all" // custom
+)
+
+const (
+	Book   SubjectT = "book"
+	Anime  SubjectT = "anime"
+	Music  SubjectT = "music"
+	Game   SubjectT = "game"
+	Real   SubjectT = "real"
+	AllSub SubjectT = "all" // custom
 )
 
 var CollectionType = map[CollectionStatus]int{
@@ -171,6 +181,37 @@ type Count struct {
 	Field8  uint32
 	Field9  uint32
 	Field10 uint32
+}
+
+type Calendar struct {
+	Weekday Weekday        `json:"weekday"`
+	Items   []CalendarItem `json:"items"`
+}
+
+// CalenderItem uses the old subject type so not 100% accurate
+type CalendarItem struct {
+	ID              int             `json:"id"`
+	URL             string          `json:"url"`
+	Summary         string          `json:"summary"`
+	AirWeekday      int             `json:"air_weekday"`
+	CollectionCount CollectionCount `json:"collection"`
+	EpsCount        int             `json:"eps_count"`
+	SlimSubject
+}
+
+type CollectionCount struct {
+	Watching uint32 `json:"doing"`
+	Wish     uint32 `json:"wish"`
+	Done     uint32 `json:"collect"`
+	OnHold   uint32 `json:"on_hold"`
+	Dropped  uint32 `json:"dropped"`
+}
+
+type Weekday struct {
+	ID uint32 `json:"id"`
+	EN string `json:"en"`
+	CN string `json:"cn"`
+	JA string `json:"ja"`
 }
 
 func (c *UserSubjectCollection) GetStatus() CollectionStatus {
