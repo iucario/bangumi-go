@@ -21,9 +21,6 @@ type Modal struct {
 	// The form embedded in the modal's frame.
 	form *tview.Form
 
-	// The message text (original, not word-wrapped).
-	text string
-
 	// The text color.
 	textColor tcell.Color
 

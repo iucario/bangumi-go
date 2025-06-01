@@ -25,6 +25,13 @@ func NewRequestError(statusCode int, body []byte) *RequestError {
 	}
 }
 
+type Client interface {
+	Get(url string) ([]byte, error)
+	Post(url string, data []byte) ([]byte, error)
+	Patch(url string, data []byte) ([]byte, error)
+	Put(url string, data []byte) ([]byte, error)
+}
+
 // HTTPClient is a simple HTTP client with authentication support.
 // Access token is optional.
 type HTTPClient struct {
@@ -51,6 +58,22 @@ func (c *HTTPClient) Get(url string) ([]byte, error) {
 
 func (c *HTTPClient) Post(url string, data []byte) ([]byte, error) {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
+	return c.request(req)
+}
+
+func (c *HTTPClient) Patch(url string, data []byte) ([]byte, error) {
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
+	return c.request(req)
+}
+
+func (c *HTTPClient) Put(url string, data []byte) ([]byte, error) {
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}
@@ -87,14 +110,6 @@ func (c *HTTPClient) request(req *http.Request) ([]byte, error) {
 }
 
 // Deprecated
-func AuthenticatedGetRequest(url string, access_token string, data any) error {
-	req, err := buildAuthRequest("GET", url, access_token, nil)
-	if err != nil {
-		return err
-	}
-
-	return sendRequest(req, data)
-}
 
 func GetRequest(url string, data any) error {
 	req, err := buildRequest(url)
@@ -112,22 +127,6 @@ func PostRequest(url string, access_token string, jsonBytes []byte, data any) er
 		return err
 	}
 
-	return sendRequest(req, data)
-}
-
-func PatchRequest(url string, access_token string, jsonBytes []byte, data any) error {
-	req, err := buildAuthRequest("PATCH", url, access_token, jsonBytes)
-	if err != nil {
-		return err
-	}
-	return sendRequest(req, data)
-}
-
-func PutRequest(url string, access_token string, jsonBytes []byte, data any) error {
-	req, err := buildAuthRequest("PUT", url, access_token, jsonBytes)
-	if err != nil {
-		return err
-	}
 	return sendRequest(req, data)
 }
 

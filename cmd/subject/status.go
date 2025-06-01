@@ -32,13 +32,13 @@ var statusCmd = &cobra.Command{
 		user := api.NewUser(authClient)
 		userInfo, err := user.GetUserInfo()
 		api.AbortOnError(err)
-		collection, _ := GetUserSubjectCollection(authClient.AccessToken, userInfo.Username, subjectId)
+		collection, _ := GetUserSubjectCollection(authClient, userInfo.Username, subjectId)
 
 		modifyCollection(authClient.AccessToken, subjectId, api.CollectionStatus(status), tags, rate, comment, private, collection)
-		subject := GetSubjectInfo(subjectId)
+		subject := GetSubjectInfo(authClient, subjectId)
 		fmt.Printf("%d\n%s\n%s\n", subject.ID, subject.NameCn, subject.Name)
 
-		printSubjectStatus(authClient.AccessToken, subjectId, collection)
+		printSubjectStatus(authClient, subjectId, collection)
 	},
 }
 
@@ -113,14 +113,14 @@ func validateStatus(status api.CollectionStatus) bool {
 	return true
 }
 
-func printSubjectStatus(token string, subjectId int, collection api.UserSubjectCollection) {
+func printSubjectStatus(c *api.AuthClient, subjectId int, collection api.UserSubjectCollection) {
 	tags := strings.Join(collection.Tags, ", ")
 	fmt.Printf("Status: %s\n", api.CollectionTypeRev[int(collection.Type)])
 	fmt.Printf("Subjcet type: %s\n", api.SubjectTypeRev[int(collection.Subject.Type)])
 	fmt.Printf("Your Tags: %s\n", tags)
 	fmt.Printf("Your Rating: %d\n", collection.Rate)
 
-	userEpisodes, _ := GetUserEpisodeCollections(token, subjectId, 0, 100, 0)
+	userEpisodes, _ := GetUserEpisodeCollections(c, subjectId, 0, 100, 0)
 	status := getEpisodeStatus(&userEpisodes.Data)
 	printEpisodeStatus(status)
 }

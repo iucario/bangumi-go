@@ -28,9 +28,9 @@ var editCmd = &cobra.Command{
 		api.AbortOnError(err)
 
 		if watch == -1 {
-			WatchNextEpisode(authClient.AccessToken, userInfo.Username, subjectId)
+			WatchNextEpisode(authClient, userInfo.Username, subjectId)
 		} else {
-			WatchToEpisode(authClient.AccessToken, subjectId, watch)
+			WatchToEpisode(authClient, subjectId, watch)
 		}
 	},
 }
@@ -41,8 +41,8 @@ func init() {
 	subCmd.AddCommand(editCmd)
 }
 
-func WatchNextEpisode(token string, username string, subjectId int) {
-	userSubjectCollection, err := GetUserSubjectCollection(token, username, subjectId)
+func WatchNextEpisode(c *api.AuthClient, username string, subjectId int) {
+	userSubjectCollection, err := GetUserSubjectCollection(c, username, subjectId)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to get user subject collection: %v\n", err))
 	}
@@ -53,7 +53,7 @@ func WatchNextEpisode(token string, username string, subjectId int) {
 		slog.Error(fmt.Sprintf("No more episodes to watch. Current: %d, Total: %d\n", epStatus, totalEps))
 	}
 
-	userEpisodeCollections, err := GetUserEpisodeCollections(token, subjectId, 0, 100, 0)
+	userEpisodeCollections, err := GetUserEpisodeCollections(c, subjectId, 0, 100, 0)
 	if err != nil {
 		slog.Error(fmt.Sprintf("%v\n", err))
 	}
@@ -62,7 +62,7 @@ func WatchNextEpisode(token string, username string, subjectId int) {
 		slog.Error(fmt.Sprintf("%v\n", err))
 	}
 
-	err = PutEpisode(token, int(episode.Episode.Id), "done")
+	err = PutEpisode(c, int(episode.Episode.Id), "done")
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to mark episode as done: %v\n", err))
 		return
@@ -72,8 +72,8 @@ func WatchNextEpisode(token string, username string, subjectId int) {
 }
 
 // Mark 1 to n episodes as done, the rest as delete
-func WatchToEpisode(token string, subjectId int, episodeNum int) {
-	userEpisodeCollections, err := GetUserEpisodeCollections(token, subjectId, 0, 100, 0)
+func WatchToEpisode(c *api.AuthClient, subjectId int, episodeNum int) {
+	userEpisodeCollections, err := GetUserEpisodeCollections(c, subjectId, 0, 100, 0)
 	if err != nil {
 		slog.Error(fmt.Sprintf("%v\n", err))
 	}
@@ -92,12 +92,12 @@ func WatchToEpisode(token string, subjectId int, episodeNum int) {
 		}
 	}
 
-	err = PatchEpisodes(token, subjectId, watchList, "done")
+	err = PatchEpisodes(c, subjectId, watchList, "done")
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to mark episodes as done: %v\n", err))
 		return
 	}
-	err = PatchEpisodes(token, subjectId, deleteList, "delete")
+	err = PatchEpisodes(c, subjectId, deleteList, "delete")
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to delete episodes: %v\n", err))
 		return

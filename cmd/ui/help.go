@@ -28,7 +28,7 @@ func NewHelpPage(app *App) *Help {
 	k/down: Move down
 	h/left: Switch to left
 	l/right: Switch to right
-	q/Q: Quit
+	Q: Quit
 
 	[Collection List]
 	e: Edit collection

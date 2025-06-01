@@ -28,22 +28,30 @@ func init() {
 	ConfigDir = cmd.ConfigDir
 }
 
-func GetUserSubjectCollection(token string, username string, subjectId int) (api.UserSubjectCollection, error) {
+func GetUserSubjectCollection(c *api.AuthClient, username string, subjectId int) (api.UserSubjectCollection, error) {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/%s/collections/%d", username, subjectId)
-	userSubjectCollection := api.UserSubjectCollection{}
-	err := api.AuthenticatedGetRequest(url, token, &userSubjectCollection)
+	b, err := c.Get(url)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to get user subject collection: %v\n", err))
+	}
+	userSubjectCollection := api.UserSubjectCollection{}
+	err = json.Unmarshal(b, &userSubjectCollection)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to unmarshal user subject collection: %v\n", err))
 	}
 	return userSubjectCollection, err
 }
 
-func GetUserEpisodeCollections(token string, subjectId, offset, limit, episode_type int) (api.UserEpisodeCollections, error) {
+func GetUserEpisodeCollections(c *api.AuthClient, subjectId, offset, limit, episode_type int) (api.UserEpisodeCollections, error) {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d/episodes", subjectId)
-	userEpisodeCollections := api.UserEpisodeCollections{}
-	err := api.AuthenticatedGetRequest(url, token, &userEpisodeCollections)
+	b, err := c.Get(url)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to get user episode collection: %v\n", err))
+	}
+	userEpisodeCollections := api.UserEpisodeCollections{}
+	err = json.Unmarshal(b, &userEpisodeCollections)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to unmarshal user episode collections: %v\n", err))
 	}
 	return userEpisodeCollections, err
 }
@@ -79,21 +87,22 @@ func PostCollection(token string, subjectId int, status api.CollectionStatus, ta
 }
 
 // status: delete, wish, done, dropped
-func PutEpisode(token string, episodeId int, status string) error {
+func PutEpisode(c *api.AuthClient, episodeId int, status string) error {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/-/episodes/%d", episodeId)
 	typeInt := api.EpisodeCollectionType[status]
 	jsonBytes := []byte(fmt.Sprintf(`{
 		"type": %d}
 	`, typeInt))
-	err := api.PutRequest(url, token, jsonBytes, nil)
+	_, err := c.Put(url, jsonBytes)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to put episode: %v", err))
 	}
+
 	return err
 }
 
 // status: delete, wish, done, dropped
-func PatchEpisodes(token string, subjectId int, episodeIds []int, status string) error {
+func PatchEpisodes(c *api.AuthClient, subjectId int, episodeIds []int, status string) error {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d/episodes", subjectId)
 	slog.Info(fmt.Sprintf("PATCH status %s to subject %d", status, subjectId))
 	typeInt := api.EpisodeCollectionType[status]
@@ -109,7 +118,7 @@ func PatchEpisodes(token string, subjectId int, episodeIds []int, status string)
 		slog.Error(fmt.Sprintf("Failed to marshal request body: %v", err))
 		return err
 	}
-	err = api.PatchRequest(url, token, jsonBytes, nil)
+	_, err = c.Patch(url, jsonBytes)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to patch episodes: %v", err))
 	}

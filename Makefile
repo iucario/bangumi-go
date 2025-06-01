@@ -1,5 +1,5 @@
 lint:
-	gofumpt -w . && golangci-lint run
+	~/go/bin/gofumpt -w . && golangci-lint run
 
 run:
 	go run .

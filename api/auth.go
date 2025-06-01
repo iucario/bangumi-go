@@ -6,13 +6,14 @@ import (
 	"log/slog"
 )
 
+// TODO: should have token field and HTTPClient should not have it
 type AuthClient struct {
-	HTTPClient
+	*HTTPClient
 }
 
 func NewAuthClient(accessToken string) *AuthClient {
 	return &AuthClient{
-		HTTPClient: *NewHTTPClient(accessToken),
+		HTTPClient: NewHTTPClient(accessToken),
 	}
 }
 
@@ -21,12 +22,12 @@ func NewAuthClient(accessToken string) *AuthClient {
 func NewAuthClientWithConfig() *AuthClient {
 	if credential, err := LoadCredential(); err == nil {
 		return &AuthClient{
-			HTTPClient: *NewHTTPClient(credential.AccessToken),
+			HTTPClient: NewHTTPClient(credential.AccessToken),
 		}
 	}
 	slog.Error("failed loading credential")
 	return &AuthClient{
-		HTTPClient: *NewHTTPClient(""),
+		HTTPClient: NewHTTPClient(""),
 	}
 }
 

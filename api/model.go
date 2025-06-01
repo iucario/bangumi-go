@@ -11,11 +11,15 @@ func (c CollectionStatus) String() string {
 	return string(c)
 }
 
-type SubjectT string
-type EpisodeStatus string
+type (
+	SubjectT      string
+	EpisodeStatus string
+)
 
-var C_STATUS = []CollectionStatus{Watching, Wish, Done, OnHold, Dropped}
-var S_Type = []SubjectT{Book, Anime, Music, Game, Real}
+var (
+	C_STATUS = []CollectionStatus{Watching, Wish, Done, OnHold, Dropped}
+	S_Type   = []SubjectT{Book, Anime, Music, Game, Real}
+)
 
 const (
 	Wish     CollectionStatus = "wish"
@@ -111,8 +115,12 @@ type Subject struct {
 	CollectionTotal uint32            `json:"collection_total"`
 	Rank            uint32            `json:"rank"`
 	Rating          Rating            `json:"rating"`
-	Collection      map[string]uint32 `json:"collection"`
-	Date            string            `json:"date"` // can be empty
+	CollectionCount CollectionCount   `json:"collection"`
+	WikiTags        []string          `json:"meta_tags"` // tags from wiki users, not general user tags
+	Platform        string            `json:"platform"`  // TV, Web, DLC, etc.
+	// Optional fields
+	Date    string           `json:"date"`    // can be empty
+	InfoBox []map[string]any `json:"infobox"` // A list of ordered maps for additional information
 }
 
 type SlimSubject struct {
@@ -230,14 +238,47 @@ func (c *UserSubjectCollection) GetTags() string {
 	return strings.Join(c.Tags, " ")
 }
 
-// GetTags returns the top 10 all user tags as a space-separated string.
 func (c *UserSubjectCollection) GetAllTags() string {
-	if len(c.Subject.Tags) == 0 {
+	return TagNames(c.Subject.Tags)
+}
+
+func (s *Subject) GetName() string {
+	if s.NameCn != "" {
+		return s.NameCn
+	}
+	return s.Name
+}
+
+func (s *Subject) ToSlimSubject() SlimSubject {
+	return SlimSubject{
+		ID:              s.ID,
+		Type:            s.Type,
+		Name:            s.Name,
+		NameCn:          s.NameCn,
+		Images:          s.Images,
+		ShortSummary:    s.Summary,
+		Tags:            s.Tags,
+		Score:           s.Score,
+		Eps:             s.Eps,
+		Volumes:         s.Volumes,
+		CollectionTotal: s.CollectionTotal,
+		Rank:            s.Rank,
+		Date:            s.Date,
+	}
+}
+
+func (s *Subject) GetAllTags() string {
+	return TagNames(s.Tags)
+}
+
+// TagNames returns all users' tags as a space-separated string.
+func TagNames(tags []Tag) string {
+	if len(tags) == 0 {
 		return ""
 	}
-	var tags []string
-	for _, tag := range c.Subject.Tags {
-		tags = append(tags, tag.Name)
+	var names []string
+	for _, tag := range tags {
+		names = append(names, tag.Name)
 	}
-	return strings.Join(tags, " ")
+	return strings.Join(names, " ")
 }

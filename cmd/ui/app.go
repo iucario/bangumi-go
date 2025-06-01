@@ -3,24 +3,22 @@ package tui
 import (
 	"fmt"
 	"log/slog"
-	"strconv"
-	"strings"
+	"slices"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd/list"
-	"github.com/iucario/bangumi-go/cmd/subject"
-	"github.com/iucario/bangumi-go/util"
 	"github.com/rivo/tview"
-
-	"slices"
 
 	"github.com/iucario/bangumi-go/internal/ui"
 )
 
-var STATUS_LIST = []string{"wish", "done", "watching", "stashed", "dropped"}
-var PAGE_SIZE = 20
+var (
+	STATUS_LIST = []string{"wish", "done", "watching", "stashed", "dropped"}
+	PAGE_SIZE   = 20
+)
 
+// App controls the whole UI
 type App struct {
 	*tview.Application
 	Pages           *tview.Pages
@@ -28,6 +26,7 @@ type App struct {
 	UserCollections map[api.CollectionStatus][]api.UserSubjectCollection
 	listViews       map[api.CollectionStatus]*tview.List
 	collectionTotal map[api.CollectionStatus]int
+	pageHistory     []string // stack of page names for back navigation
 }
 
 func NewApp(user *api.User) *App {
@@ -53,7 +52,8 @@ func NewApp(user *api.User) *App {
 // Run starts the TUI application with watching list and sets up the main pages.
 func (a *App) Run() error {
 	// Add separate pages for each collection type
-	a.Pages.AddAndSwitchToPage("watching", a.NewCollectionPage(api.Watching), true)
+	a.OpenSubjectPage(430699) // For testing
+	a.Pages.AddPage("watching", a.NewCollectionPage(api.Watching), true, false)
 	a.Pages.AddPage("wish", a.NewCollectionPage(api.Wish), true, false)
 	a.Pages.AddPage("done", a.NewCollectionPage(api.Done), true, false)
 	a.Pages.AddPage("stashed", a.NewCollectionPage(api.OnHold), true, false)
@@ -65,6 +65,11 @@ func (a *App) Run() error {
 		panic(err)
 	}
 	return nil
+}
+
+// GoHome switchs app to page "watching"
+func (a *App) GoHome() {
+	a.Pages.SwitchToPage("watching")
 }
 
 // NewCollectionPage creates a list with detail page for a specific collection type.
@@ -119,6 +124,14 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 		}
 	})
 
+	// Example: when you want to open a subject page from a collection list
+	listView.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+		if index >= 0 && index < len(collections) {
+			id := int(collections[index].Subject.ID)
+			a.OpenSubjectPage(id)
+		}
+	})
+
 	// The flex layout for the collection page
 	collectionPage := tview.NewFlex().
 		AddItem(listView, 0, 2, true).
@@ -143,15 +156,15 @@ func (a *App) NewCollectionPage(collectionStatus api.CollectionStatus) *tview.Fl
 			case 'h':
 				a.SetFocus(listView)
 			case 'e':
-				slog.Debug("edit")
+				slog.Debug("collect")
 				if len(collections) == 0 {
 					slog.Warn("No collection to edit")
 					return event
 				}
 				index := listView.GetCurrentItem()
-				modal := a.NewEditModel(collections[index])
-				a.Pages.AddPage("edit", modal, true, true) // Add modal as an overlay
-				a.SetFocus(modal)                          // Set focus to the modal
+				modal := NewEditModal(a, collections[index])
+				a.Pages.AddPage("collect", modal, true, true) // Add modal as an overlay
+				a.SetFocus(modal)                             // Set focus to the modal
 			case 'R': // Refresh the list
 				slog.Debug("refresh")
 				a.ReloadCollection()
@@ -223,6 +236,29 @@ func (a *App) ReloadCollection() {
 	a.Pages.SwitchToPage(currentPageName)
 }
 
+// PushPage adds a page to the history stack
+func (a *App) PushPage(name string) {
+	a.pageHistory = append(a.pageHistory, name)
+}
+
+// PopPage removes and returns the last page from the history stack
+func (a *App) PopPage() (string, bool) {
+	if len(a.pageHistory) == 0 {
+		return "", false
+	}
+	index := len(a.pageHistory) - 1
+	name := a.pageHistory[index]
+	a.pageHistory = slices.Delete(a.pageHistory, index, index+1)
+	return name, true
+}
+
+// OpenSubjectPage pushes the current page to history and opens a subject page
+func (a *App) OpenSubjectPage(subjectID int) {
+	current, _ := a.Pages.GetFrontPage()
+	a.PushPage(current)
+	a.Pages.AddAndSwitchToPage("subject", NewSubjectPage(a, subjectID), true)
+}
+
 // handleScrollKeys captures input events for the Box and handles 'j' and 'k' keys.
 func handleScrollKeys(b tview.Primitive) func(event *tcell.EventKey) *tcell.EventKey {
 	return func(event *tcell.EventKey) *tcell.EventKey {
@@ -285,126 +321,6 @@ func createCollectionText(c *api.UserSubjectCollection) string {
 	return text
 }
 
-func (a *App) NewEditModel(collection api.UserSubjectCollection) *ui.Modal {
-	closeFn := func() {
-		a.Pages.RemovePage("edit")
-		a.SetFocus(a.Pages) // Restore focus to the main page
-	}
-	form := createForm(collection, a, closeFn)
-	modal := ui.NewModalForm("Edit Collection", form)
-
-	// Set input capture at the form level to catch Esc
-	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEsc {
-			closeFn()
-			return nil // Prevent event from propagating
-		}
-		return event
-	})
-
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-		if buttonIndex == -1 {
-			slog.Info("modal closed")
-			closeFn()
-		} else {
-			slog.Info(fmt.Sprintf("button %d clicked", buttonIndex))
-			slog.Info(fmt.Sprintf("button %s clicked", buttonLabel))
-		}
-	})
-
-	return modal
-}
-
-// createForm creates a form for editing the collection.
-func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *tview.Form {
-	// FIXME: should disable shortcuts when in form
-	status := util.IndexOfString(STATUS_LIST, collection.GetStatus().String())
-	initTags := collection.GetTags()
-	collectionStatus := collection.GetStatus()
-
-	form := tview.NewForm()
-	form.SetBorder(true).SetTitle("Edit Collection").SetTitleAlign(tview.AlignLeft)
-	form.AddInputField("Episodes watched", util.Uint32ToString(collection.EpStatus), 5, nil, func(text string) {
-		epStatus, err := strconv.Atoi(text)
-		if err != nil {
-			slog.Error(fmt.Sprintf("invalid episode status %s", text))
-		}
-		collection.EpStatus = uint32(epStatus)
-	})
-
-	form.AddDropDown("Status", STATUS_LIST, status, func(option string, optionIndex int) {
-		slog.Debug(fmt.Sprintf("selected %s", option))
-		collection.SetStatus(api.CollectionStatus(option))
-	})
-	form.AddInputField("Tags(Separate by spaces)", initTags, 0, nil, func(text string) {
-		// TODO: validate tags
-		collection.Tags = strings.Split(text, " ")
-	})
-	form.AddInputField("Rate", util.Uint32ToString(collection.Rate), 3, nil, func(text string) {
-		rate, err := strconv.Atoi(text)
-		if err != nil {
-			slog.Error(fmt.Sprintf("invalid rate %s. Must be in [0-10]", text))
-		}
-		rate = max(0, min(10, rate))
-		collection.Rate = uint32(rate)
-	})
-	form.AddInputField("Comment", collection.Comment, 0, nil, func(text string) {
-		collection.Comment = text
-	})
-	form.AddCheckbox("Private", collection.Private, func(checked bool) {
-		collection.Private = checked
-	})
-	form.AddButton("Save", func() {
-		slog.Debug("save button clicked")
-		slog.Debug("posting collection...")
-		credential, err := api.GetCredential()
-		if err != nil {
-			slog.Error("login required")
-			// TODO: display error messsage
-		}
-		err = subject.PostCollection(credential.AccessToken, int(collection.SubjectID), collection.GetStatus(),
-			collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
-		if err != nil {
-			slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
-		}
-		subject.WatchToEpisode(credential.AccessToken, int(collection.SubjectID), int(collection.EpStatus))
-
-		// Reorder the list and update the data in the watch list
-		collections := a.UserCollections[collectionStatus]
-		updatedIndex := indexOfCollection(collections, collection.SubjectID)
-		if updatedIndex != -1 {
-			newCollections := reorderedSlice(collections, updatedIndex)
-			collections = newCollections
-			collections[0] = collection
-			// Update the page
-			// FIXME: not updating the other pages
-			newPage := a.NewCollectionPage(collectionStatus)
-			a.Pages.RemovePage(collectionStatus.String())
-			a.Pages.AddPage(collectionStatus.String(), newPage, true, false)
-			a.Pages.SwitchToPage(collectionStatus.String())
-			a.SetFocus(newPage)
-		}
-
-		// Back to home page
-		closeFn()
-	})
-	form.AddButton("Cancel", func() {
-		slog.Info("cancel button clicked")
-		closeFn()
-	})
-	return form
-}
-
-// indexOfCollection finds the index of a collection in the user collections by SubjectID.
-func indexOfCollection(collections []api.UserSubjectCollection, subjectID uint32) int {
-	for i, collection := range collections {
-		if collection.SubjectID == subjectID {
-			return i
-		}
-	}
-	return -1 // Return -1 if not found
-}
-
 // Move the item at index to the front of the slice
 func reorderedSlice(collections []api.UserSubjectCollection, index int) []api.UserSubjectCollection {
 	if index < 0 || index >= len(collections) {
@@ -429,7 +345,7 @@ func (a *App) handlePageSwitch(key rune) {
 		a.Pages.SwitchToPage("dropped")
 	case '6':
 		a.Pages.SwitchToPage("calendar")
-	case 'q', 'Q':
+	case 'Q':
 		a.Stop()
 	case '?':
 		a.Pages.SwitchToPage("help")

@@ -1,6 +1,7 @@
 package subject
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -20,7 +21,8 @@ var infoCmd = &cobra.Command{
 			slog.Error(fmt.Sprintf("Invalid subject ID: %s", id))
 			return
 		}
-		subject := GetSubjectInfo(subjectId)
+		authClient := api.NewAuthClientWithConfig()
+		subject := GetSubjectInfo(authClient, subjectId)
 		fmt.Printf("%d\n%s\n%s\n%s\n", subject.ID, subject.NameCn, subject.Name, subject.Summary)
 	},
 }
@@ -29,13 +31,19 @@ func init() {
 	subCmd.AddCommand(infoCmd)
 }
 
-func GetSubjectInfo(subjectId int) api.Subject {
+func GetSubjectInfo(c api.Client, subjectId int) *api.Subject {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/subjects/%d", subjectId)
 
-	subject := api.Subject{}
-	err := api.GetRequest(url, &subject)
+	b, err := c.Get(url)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to get subject info: %v", err))
+		return nil
 	}
-	return subject
+	subject := api.Subject{}
+	err = json.Unmarshal(b, &subject)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to unmarshal subject info: %v", err))
+		return nil
+	}
+	return &subject
 }
