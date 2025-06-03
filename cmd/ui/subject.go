@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
@@ -12,9 +13,10 @@ import (
 
 type SubjectPage struct {
 	*tview.Grid
-	app     *App
 	client  api.Client
+	app     *App
 	Subject *api.Subject
+	content *tview.TextView
 	// Optional
 	Collection *api.UserSubjectCollection
 }
@@ -40,29 +42,90 @@ func NewSubjectPage(a *App, ID int) *SubjectPage {
 		client:     a.User.Client,
 		Collection: collection,
 	}
-	sub.initLayout()
 	sub.render()
 	sub.setKeyBindings()
 	return sub
 }
 
-func (s *SubjectPage) initLayout() {
+// render displays the subject information and user collection data if available.
+func (s *SubjectPage) render() {
 	s.SetRows(2, 0, 1)
 	s.SetColumns(-1)
 	s.SetBorder(false)
-}
-
-// render displays the subject information and user collection data if available.
-func (s *SubjectPage) render() {
 	top := tview.NewTextView().SetTextAlign(tview.AlignCenter)
 	top.SetText(s.Subject.GetName())
 
+	text := s.createText()
+	s.content = tview.NewTextView().SetDynamicColors(true).SetScrollable(true).SetWrap(true)
+	s.content.SetText(text)
+	s.content.SetBorder(true)
+	s.content.SetBorderColor(tcell.ColorYellow)
+
+	footer := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
+	footer.SetText("e: 编辑  q: 返回  R: 刷新  ?: Help")
+
+	s.AddItem(top, 0, 0, 1, 1, 0, 0, false).
+		AddItem(s.content, 1, 0, 1, 1, 0, 0, true).
+		AddItem(footer, 2, 0, 1, 1, 0, 0, false)
+	s.SetBorders(true)
+}
+
+func (s *SubjectPage) Refresh() {
+	slog.Debug("subject refresh")
+	s.Subject = subject.GetSubjectInfo(s.client, int(s.Subject.ID))
+	if s.app.User != nil && s.app.User.Client != nil && s.app.User.Username != "" {
+		c, err := subject.GetUserSubjectCollection(s.app.User.Client, s.app.User.Username, int(s.Subject.ID))
+		if err == nil && c.Type != 0 {
+			s.Collection = &c
+		} else {
+			s.Collection = nil
+		}
+	}
+	s.content.SetText(s.createText())
+}
+
+func (s *SubjectPage) setKeyBindings() {
+	slog.Debug("setKeyBindings called")
+	s.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'e':
+			modal := NewCollectModal(s.app, s.Subject, s.onSave)
+			s.app.Pages.AddPage("collect", modal, true, true)
+			s.app.SetFocus(modal)
+		case 'q':
+			// Remove subject page. Go back to previous page if any
+			if prev, ok := s.app.PopPage(); ok {
+				s.app.Pages.SwitchToPage(prev)
+			}
+			s.app.Pages.RemovePage("subject")
+		case 'R':
+			s.Refresh()
+		default:
+			if s.app != nil {
+				s.app.handlePageSwitch(event.Rune())
+			}
+		}
+		return event
+	})
+}
+
+func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) {
+	slog.Debug("Save Subject", "collect", collection)
+	if collection == nil {
+		slog.Error("collecting subject")
+		return
+	}
+	// TODO: update collection info
+	s.Collection = collection
+	s.content.SetText(s.createText())
+}
+
+func (s *SubjectPage) createText() string {
 	// Compose subject info
 	totalEps := fmt.Sprintf("%d", s.Subject.Eps)
 	if s.Subject.Eps == 0 {
 		totalEps = "未知"
 	}
-
 	text := fmt.Sprintf("[yellow]%s[-]\n%s\n", s.Subject.NameCn, s.Subject.Name)
 	text += fmt.Sprintf("https://bgm.tv/subject/%d\n", s.Subject.ID)
 	text += "\n--------\n"
@@ -92,70 +155,15 @@ func (s *SubjectPage) render() {
 	if s.Collection != nil && s.Collection.Type != 0 {
 		text += "\n[yellow]你的收藏信息[-]:\n"
 		text += fmt.Sprintf("状态: %s\n", api.CollectionTypeRev[int(s.Collection.Type)])
-		if s.Collection.Rate > 0 {
-			text += fmt.Sprintf("评分: %d\n", s.Collection.Rate)
-		}
-		if s.Collection.Comment != "" {
-			text += fmt.Sprintf("短评: %s\n", s.Collection.Comment)
-		}
-		if len(s.Collection.Tags) > 0 {
-			text += fmt.Sprintf("标签: %s\n", strings.Join(s.Collection.Tags, ", "))
-		}
-		if s.Collection.EpStatus > 0 {
-			text += fmt.Sprintf("看到第 %d 集\n", s.Collection.EpStatus)
-		}
+		text += fmt.Sprintf("评分: %d\n", s.Collection.Rate)
+		text += fmt.Sprintf("短评: %s\n", s.Collection.Comment)
+		text += fmt.Sprintf("标签: %s\n", strings.Join(s.Collection.Tags, ", "))
+		text += fmt.Sprintf("看到第 %d 集\n", s.Collection.EpStatus)
 		if s.Collection.VolStatus > 0 {
 			text += fmt.Sprintf("看到第 %d 卷\n", s.Collection.VolStatus)
 		}
 	}
-
-	main := tview.NewTextView().SetDynamicColors(true).SetScrollable(true).SetWrap(true)
-	main.SetText(text)
-
-	footer := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
-	footer.SetText("e: 编辑  q: 返回  R: 刷新  ?: Help")
-
-	s.AddItem(top, 0, 0, 1, 1, 0, 0, false).
-		AddItem(main, 1, 0, 1, 1, 0, 0, true).
-		AddItem(footer, 2, 0, 1, 1, 0, 0, false)
-	s.SetBorders(true)
-}
-
-func (s *SubjectPage) Refresh() {
-	s.Subject = subject.GetSubjectInfo(s.client, int(s.Subject.ID))
-	if s.app.User != nil && s.app.User.Client != nil && s.app.User.Username != "" {
-		c, err := subject.GetUserSubjectCollection(s.app.User.Client, s.app.User.Username, int(s.Subject.ID))
-		if err == nil && c.Type != 0 {
-			s.Collection = &c
-		} else {
-			s.Collection = nil
-		}
-	}
-	s.render()
-}
-
-func (s *SubjectPage) setKeyBindings() {
-	s.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Rune() {
-		case 'e':
-			modal := NewCollectModal(s.app, s.Subject)
-			s.app.Pages.AddPage("collect", modal, true, true)
-			s.app.SetFocus(modal)
-		case 'q':
-			// Remove subject page. Go back to previous page if any
-			if prev, ok := s.app.PopPage(); ok {
-				s.app.Pages.SwitchToPage(prev)
-			}
-			s.app.Pages.RemovePage("subject")
-		case 'R':
-			s.Refresh()
-		default:
-			if s.app != nil {
-				s.app.handlePageSwitch(event.Rune())
-			}
-		}
-		return event
-	})
+	return text
 }
 
 // renderTags formats the subject tags for display, highlighting wiki tags.
@@ -172,5 +180,5 @@ func renderTags(tags []api.Tag, wikiTags []string) string {
 		}
 		arr = append(arr, text)
 	}
-	return "|" + strings.Join(arr, " | ") + "|"
+	return "| " + strings.Join(arr, " | ") + " |"
 }

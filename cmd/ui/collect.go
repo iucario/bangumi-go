@@ -8,7 +8,6 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/iucario/bangumi-go/api"
-	"github.com/iucario/bangumi-go/cmd/subject"
 	"github.com/iucario/bangumi-go/internal/ui"
 	"github.com/iucario/bangumi-go/util"
 	"github.com/rivo/tview"
@@ -17,23 +16,23 @@ import (
 var STATUS_LIST = []string{"wish", "done", "watching", "stashed", "dropped"}
 
 // NewCollectModal creates a modal for an uncollected subject
-func NewCollectModal(a *App, s *api.Subject) *ui.Modal {
+func NewCollectModal(a *App, s *api.Subject, onSave func(*api.UserSubjectCollection)) *ui.Modal {
 	collection := api.UserSubjectCollection{
 		SubjectType: s.Type,
 		Subject:     s.ToSlimSubject(),
 		Type:        uint32(api.CollectionType[api.Watching]),
 	}
 
-	return NewEditModal(a, collection)
+	return NewEditModal(a, collection, onSave)
 }
 
 // NewEditModal creates a modal for a collected subject
-func NewEditModal(a *App, collection api.UserSubjectCollection) *ui.Modal {
+func NewEditModal(a *App, collection api.UserSubjectCollection, onSave func(*api.UserSubjectCollection)) *ui.Modal {
 	closeFn := func() {
 		a.Pages.RemovePage("collect")
 		a.SetFocus(a.Pages) // Restore focus to the main page
 	}
-	form := createForm(collection, a, closeFn)
+	form := createForm(collection, closeFn, onSave)
 	modal := ui.NewModalForm("Edit Collection", form)
 
 	// Set input capture at the form level to catch Esc
@@ -59,11 +58,9 @@ func NewEditModal(a *App, collection api.UserSubjectCollection) *ui.Modal {
 }
 
 // createForm creates a form for editing the collection.
-func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *tview.Form {
-	// FIXME: should disable shortcuts when in form
+func createForm(collection api.UserSubjectCollection, closeFn func(), onSave func(*api.UserSubjectCollection)) *tview.Form {
 	status := util.IndexOfString(STATUS_LIST, collection.GetStatus().String())
 	initTags := collection.GetTags()
-	prevStatus := collection.GetStatus()
 
 	form := tview.NewForm()
 	form.SetBorder(true).SetTitle("Edit Collection").SetTitleAlign(tview.AlignLeft)
@@ -98,7 +95,7 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 		collection.Private = checked
 	})
 	form.AddButton("Save", func() {
-		saveFn(a, collection, prevStatus)
+		onSave(&collection)
 		closeFn()
 	})
 	form.AddButton("Cancel", func() {
@@ -106,33 +103,6 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 		closeFn()
 	})
 	return form
-}
-
-func saveFn(a *App, collection api.UserSubjectCollection, prevStatus api.CollectionStatus) {
-	slog.Debug("save button clicked")
-	slog.Debug("posting collection...")
-	err := subject.PostCollection(a.User.Client, int(collection.SubjectID), collection.GetStatus(),
-		collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
-	}
-	subject.WatchToEpisode(a.User.Client, int(collection.SubjectID), int(collection.EpStatus))
-
-	// Reorder the list and update the data in the watch list
-	collections := a.UserCollections[prevStatus]
-	updatedIndex := indexOfCollection(collections, collection.SubjectID)
-	if updatedIndex != -1 {
-		newCollections := reorderedSlice(collections, updatedIndex)
-		collections = newCollections
-		collections[0] = collection
-		// Update the page
-		// FIXME: not updating the other pages
-		newPage := a.NewCollectionPage(prevStatus)
-		a.Pages.RemovePage(prevStatus.String())
-		a.Pages.AddPage(prevStatus.String(), newPage, true, false)
-		a.Pages.SwitchToPage(prevStatus.String())
-		a.SetFocus(newPage)
-	}
 }
 
 // indexOfCollection finds the index of a collection in the user collections by SubjectID.
@@ -143,4 +113,17 @@ func indexOfCollection(collections []api.UserSubjectCollection, subjectID uint32
 		}
 	}
 	return -1 // Return -1 if not found
+}
+
+// handleScrollKeys captures input events for the Box and handles 'j' and 'k' keys.
+func handleScrollKeys(b tview.Primitive) func(event *tcell.EventKey) *tcell.EventKey {
+	return func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'j':
+			b.InputHandler()(tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone), nil)
+		case 'k':
+			b.InputHandler()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone), nil)
+		}
+		return event
+	}
 }
