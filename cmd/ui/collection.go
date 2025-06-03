@@ -13,6 +13,8 @@ import (
 	"github.com/rivo/tview"
 )
 
+var PAGE_SIZE = 20
+
 type CollectionPage struct {
 	*tview.Flex
 	Name             string
@@ -198,7 +200,7 @@ func (c *CollectionPage) Refresh() {
 		c.app.Pages.RemovePage(status)
 		c.app.Pages.AddPage(status, NewCollectionPage(c.app, api.CollectionStatus(status)), true, false)
 	}
-	c.app.Pages.SwitchToPage(c.Name)
+	c.app.Goto(c.Name)
 }
 
 // newCollectionDetail creates a text view for the selected collection.
@@ -228,9 +230,9 @@ func createCollectionText(c *api.UserSubjectCollection) string {
 	if c.Subject.Eps == 0 {
 		totalEp = "Unknown"
 	}
-	text := fmt.Sprintf("[%s]%s[-]\n%s\n\n", colorToHex(ui.Styles.SecondaryTextColor), c.Subject.NameCn, c.Subject.Name)
-	text += fmt.Sprintf("%s\n", api.SubjectTypeRev[int(c.Subject.Type)])
-	text += fmt.Sprintf("%s\n", c.Subject.ShortSummary)
+	text := fmt.Sprintf("[%s]%s[-]\n%s\n", colorToHex(ui.Styles.SecondaryTextColor), c.Subject.NameCn, c.Subject.Name)
+	text += fmt.Sprintf("%s\n\n", api.SubjectTypeRev[int(c.Subject.Type)])
+	text += fmt.Sprintf("%s...\n", c.Subject.ShortSummary)
 	text += fmt.Sprintf("\nYour Tags: [%s]%s[-]\n", colorToHex(ui.Styles.TertiaryTextColor), c.GetTags())
 	text += fmt.Sprintf("Your Rate: [%s]%s[-]\n", colorToHex(ui.Styles.TertiaryTextColor), rate)
 	text += fmt.Sprintf("Episodes Watched: [%s]%d[-] of %s\n", colorToHex(ui.Styles.TertiaryTextColor), c.EpStatus, totalEp)
@@ -278,11 +280,11 @@ func (c *CollectionPage) onSave(collection *api.UserSubjectCollection) {
 		c.Collections = newCollections
 		c.Collections[0] = *collection
 		// Update the page
-		// FIXME: not updating the other pages
+		// FIXME: should update other pages
 		newPage := NewCollectionPage(c.app, prevStatus)
 		c.app.Pages.RemovePage(prevStatus.String())
 		c.app.Pages.AddPage(prevStatus.String(), newPage, true, false)
-		c.app.Pages.SwitchToPage(prevStatus.String())
+		c.app.Goto(prevStatus.String())
 		c.app.SetFocus(newPage)
 	}
 }

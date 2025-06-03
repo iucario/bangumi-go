@@ -49,7 +49,7 @@ func NewSubjectPage(a *App, ID int) *SubjectPage {
 
 // render displays the subject information and user collection data if available.
 func (s *SubjectPage) render() {
-	s.SetRows(2, 0, 1)
+	s.SetRows(1, 0, 1)
 	s.SetColumns(-1)
 	s.SetBorder(false)
 	top := tview.NewTextView().SetTextAlign(tview.AlignCenter)
@@ -58,8 +58,6 @@ func (s *SubjectPage) render() {
 	text := s.createText()
 	s.content = tview.NewTextView().SetDynamicColors(true).SetScrollable(true).SetWrap(true)
 	s.content.SetText(text)
-	s.content.SetBorder(true)
-	s.content.SetBorderColor(tcell.ColorYellow)
 
 	footer := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
 	footer.SetText("e: 编辑  q: 返回  R: 刷新  ?: Help")
@@ -94,10 +92,7 @@ func (s *SubjectPage) setKeyBindings() {
 			s.app.SetFocus(modal)
 		case 'q':
 			// Remove subject page. Go back to previous page if any
-			if prev, ok := s.app.PopPage(); ok {
-				s.app.Pages.SwitchToPage(prev)
-			}
-			s.app.Pages.RemovePage("subject")
+			s.app.GoBack()
 		case 'R':
 			s.Refresh()
 		default:

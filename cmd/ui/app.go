@@ -10,13 +10,12 @@ import (
 	"github.com/iucario/bangumi-go/internal/ui"
 )
 
-var PAGE_SIZE = 20
-
 // App controls the whole UI
 type App struct {
 	*tview.Application
 	Pages       *tview.Pages
 	User        *api.User
+	currentPage string
 	pageHistory []string // stack of page names for back navigation
 }
 
@@ -42,7 +41,7 @@ func (a *App) Run() error {
 	a.Pages.AddPage("dropped", NewCollectionPage(a, api.Dropped), true, false)
 	a.Pages.AddPage("calendar", NewCalendarPage(a), true, false)
 	a.Pages.AddPage("help", NewHelpPage(a), true, false)
-	a.Pages.SwitchToPage("watching")
+	a.Goto("watching")
 
 	if err := a.Application.SetRoot(a.Pages, true).SetFocus(a.Pages).Run(); err != nil {
 		panic(err)
@@ -52,7 +51,14 @@ func (a *App) Run() error {
 
 // GoHome switchs app to page "watching"
 func (a *App) GoHome() {
-	a.Pages.SwitchToPage("watching")
+	a.Goto("watching")
+}
+
+// Switch to a page and set the page to current page
+func (a *App) Goto(page string) {
+	// TODO: validation
+	a.Pages.SwitchToPage(page)
+	a.currentPage = page
 }
 
 // PushPage adds a page to the history stack
@@ -71,29 +77,44 @@ func (a *App) PopPage() (string, bool) {
 	return name, true
 }
 
+// Go back if there is a history, else do nothing
+func (a *App) GoBack() {
+	if prev, ok := a.PopPage(); ok {
+		a.Goto(prev)
+	}
+}
+
 // OpenSubjectPage pushes the current page to history and opens a subject page
-func (a *App) OpenSubjectPage(subjectID int, page string) {
-	a.PushPage(page)
-	a.Pages.AddAndSwitchToPage("subject", NewSubjectPage(a, subjectID), true)
+func (a *App) OpenSubjectPage(subjectID int, prevPage string) {
+	a.PushPage(prevPage)
+	a.Pages.AddPage("subject", NewSubjectPage(a, subjectID), true, false)
+	a.Goto("subject")
+}
+
+func (a *App) OpenHelpPage() {
+	a.PushPage(a.currentPage)
+	a.Goto("help")
 }
 
 func (a *App) handlePageSwitch(key rune) {
 	switch key {
 	case '1':
-		a.Pages.SwitchToPage("watching")
+		a.Goto("watching")
 	case '2':
-		a.Pages.SwitchToPage("wish")
+		a.Goto("wish")
 	case '3':
-		a.Pages.SwitchToPage("done")
+		a.Goto("done")
 	case '4':
-		a.Pages.SwitchToPage("stashed")
+		a.Goto("stashed")
 	case '5':
-		a.Pages.SwitchToPage("dropped")
+		a.Goto("dropped")
 	case '6':
-		a.Pages.SwitchToPage("calendar")
+		a.Goto("calendar")
 	case 'Q':
 		a.Stop()
+	case 'q':
+		a.GoBack()
 	case '?':
-		a.Pages.SwitchToPage("help")
+		a.OpenHelpPage()
 	}
 }
