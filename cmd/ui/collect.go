@@ -14,6 +14,8 @@ import (
 	"github.com/rivo/tview"
 )
 
+var STATUS_LIST = []string{"wish", "done", "watching", "stashed", "dropped"}
+
 // NewCollectModal creates a modal for an uncollected subject
 func NewCollectModal(a *App, s *api.Subject) *ui.Modal {
 	collection := api.UserSubjectCollection{
@@ -109,12 +111,7 @@ func createForm(collection api.UserSubjectCollection, a *App, closeFn func()) *t
 func saveFn(a *App, collection api.UserSubjectCollection, prevStatus api.CollectionStatus) {
 	slog.Debug("save button clicked")
 	slog.Debug("posting collection...")
-	credential, err := api.GetCredential()
-	if err != nil {
-		slog.Error("login required")
-		// TODO: display error messsage
-	}
-	err = subject.PostCollection(credential.AccessToken, int(collection.SubjectID), collection.GetStatus(),
+	err := subject.PostCollection(a.User.Client, int(collection.SubjectID), collection.GetStatus(),
 		collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to post collection: %v", err))

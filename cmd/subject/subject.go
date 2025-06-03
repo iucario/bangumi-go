@@ -58,7 +58,7 @@ func GetUserEpisodeCollections(c *api.AuthClient, subjectId, offset, limit, epis
 
 // status: wish, done, watch, onhold, dropped
 // ep_status and vol_status are only used for book
-func PostCollection(token string, subjectId int, status api.CollectionStatus, tags []string, comment string, rate int, private bool) error {
+func PostCollection(c *api.AuthClient, subjectId int, status api.CollectionStatus, tags []string, comment string, rate int, private bool) error {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d", subjectId)
 	requestBody := struct {
 		Type    int      `json:"type"`
@@ -78,12 +78,13 @@ func PostCollection(token string, subjectId int, status api.CollectionStatus, ta
 		slog.Error(fmt.Sprintf("Failed to marshal request body: %v", err))
 		return err
 	}
-	err = api.PostRequest(url, token, jsonBytes, nil)
+	_, err = c.Post(url, jsonBytes)
 	if err != nil {
-	} else {
-		slog.Info(fmt.Sprintf("Successfully set subject %d to %s", subjectId, status))
+		slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
+		return err
 	}
-	return err
+	slog.Debug(fmt.Sprintf("Successfully set subject %d to %s", subjectId, status))
+	return nil // TODO: maybe return the collection struct
 }
 
 // status: delete, wish, done, dropped

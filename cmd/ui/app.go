@@ -13,10 +13,7 @@ import (
 	"github.com/iucario/bangumi-go/internal/ui"
 )
 
-var (
-	STATUS_LIST = []string{"wish", "done", "watching", "stashed", "dropped"}
-	PAGE_SIZE   = 20
-)
+var PAGE_SIZE = 20
 
 // App controls the whole UI
 type App struct {

@@ -34,7 +34,7 @@ var statusCmd = &cobra.Command{
 		api.AbortOnError(err)
 		collection, _ := GetUserSubjectCollection(authClient, userInfo.Username, subjectId)
 
-		modifyCollection(authClient.AccessToken, subjectId, api.CollectionStatus(status), tags, rate, comment, private, collection)
+		modifyCollection(authClient, subjectId, api.CollectionStatus(status), tags, rate, comment, private, collection)
 		subject := GetSubjectInfo(authClient, subjectId)
 		fmt.Printf("%d\n%s\n%s\n", subject.ID, subject.NameCn, subject.Name)
 
@@ -57,7 +57,7 @@ func init() {
 }
 
 // Modify collection if any of the args are not empty and different from the current collection
-func modifyCollection(token string, subjectId int, status api.CollectionStatus, tags []string, rate int, comment string, private bool, collection api.UserSubjectCollection) {
+func modifyCollection(c *api.AuthClient, subjectId int, status api.CollectionStatus, tags []string, rate int, comment string, private bool, collection api.UserSubjectCollection) {
 	slog.Info(fmt.Sprintf("called modifyCollection: %s %v %d %s private %v", status, tags, rate, comment, private))
 	finalStatus := api.CollectionTypeRev[int(collection.Type)]
 	if status != "" && validateStatus(status) {
@@ -78,7 +78,7 @@ func modifyCollection(token string, subjectId int, status api.CollectionStatus, 
 	finalPrivate := private
 
 	if collectionChanged(finalStatus, finalTags, finalRate, finalComment, finalPrivate, collection) {
-		err := PostCollection(token, subjectId, finalStatus, finalTags, finalComment, finalRate, finalPrivate)
+		err := PostCollection(c, subjectId, finalStatus, finalTags, finalComment, finalRate, finalPrivate)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Failed to modify collection: %v", err))
 		} else {

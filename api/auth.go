@@ -39,6 +39,7 @@ type AuthStatus struct {
 	UserId      int    `json:"user_id"`
 }
 
+// Get token status from the API.
 func (c *AuthClient) GetStatus() bool {
 	api := "https://bgm.tv/oauth/token_status"
 	b, err := c.Get(api)
