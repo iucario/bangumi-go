@@ -243,6 +243,7 @@ func createCollectionText(c *api.UserSubjectCollection) string {
 		}
 		text += fmt.Sprintf("Volumes Read: [%s]%d[-] of %s\n", colorToHex(ui.Styles.TertiaryTextColor), c.VolStatus, totalVol)
 	}
+	text += fmt.Sprintf("Private collection: %v\n", c.Private)
 	text += "\n---------------------------------------\n\n"
 	text += fmt.Sprintf("On Air Date: %s\n", c.Subject.Date)
 	text += fmt.Sprintf("User Score: %.1f\n", c.Subject.Score)
@@ -282,8 +283,8 @@ func (c *CollectionPage) onSave(collection *api.UserSubjectCollection) {
 		// Update the page
 		// FIXME: should update other pages
 		newPage := NewCollectionPage(c.app, prevStatus)
-		c.app.Pages.RemovePage(prevStatus.String())
-		c.app.Pages.AddPage(prevStatus.String(), newPage, true, false)
+		c.app.Pages.RemovePage(prevStatus.String())                    // What's this?
+		c.app.Pages.AddPage(prevStatus.String(), newPage, true, false) // TODO: refresh elegantly
 		c.app.Goto(prevStatus.String())
 		c.app.SetFocus(newPage)
 	}

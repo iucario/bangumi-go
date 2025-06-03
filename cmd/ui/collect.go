@@ -15,17 +15,6 @@ import (
 
 var STATUS_LIST = []string{"wish", "done", "watching", "stashed", "dropped"}
 
-// NewCollectModal creates a modal for an uncollected subject
-func NewCollectModal(a *App, s *api.Subject, onSave func(*api.UserSubjectCollection)) *ui.Modal {
-	collection := api.UserSubjectCollection{
-		SubjectType: s.Type,
-		Subject:     s.ToSlimSubject(),
-		Type:        uint32(api.CollectionType[api.Watching]),
-	}
-
-	return NewEditModal(a, collection, onSave)
-}
-
 // NewEditModal creates a modal for a collected subject
 func NewEditModal(a *App, collection api.UserSubjectCollection, onSave func(*api.UserSubjectCollection)) *ui.Modal {
 	closeFn := func() {
@@ -63,7 +52,7 @@ func createForm(collection api.UserSubjectCollection, closeFn func(), onSave fun
 	initTags := collection.GetTags()
 
 	form := tview.NewForm()
-	form.SetBorder(true).SetTitle("Edit Collection").SetTitleAlign(tview.AlignLeft)
+	form.SetBorder(true).SetTitle(fmt.Sprintf("Edit Subject %d", collection.Subject.ID)).SetTitleAlign(tview.AlignLeft)
 	form.AddInputField("Episodes watched", util.Uint32ToString(collection.EpStatus), 5, nil, func(text string) {
 		epStatus, err := strconv.Atoi(text)
 		if err != nil {

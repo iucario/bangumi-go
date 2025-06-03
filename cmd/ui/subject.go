@@ -22,7 +22,7 @@ type SubjectPage struct {
 }
 
 func NewSubjectPage(a *App, ID int) *SubjectPage {
-	data := subject.GetSubjectInfo(a.User.Client, ID)
+	sbj := subject.GetSubjectInfo(a.User.Client, ID)
 
 	// Get user collection data for this subject
 	var collection *api.UserSubjectCollection
@@ -31,14 +31,19 @@ func NewSubjectPage(a *App, ID int) *SubjectPage {
 		if err == nil && c.Type != 0 {
 			collection = &c
 		} else {
-			collection = nil
+			collection = &api.UserSubjectCollection{
+				SubjectType: sbj.Type,
+				Subject:     sbj.ToSlimSubject(),
+				Type:        uint32(api.CollectionType[api.Watching]),
+				SubjectID:   sbj.ID,
+			}
 		}
 	}
 
 	sub := &SubjectPage{
 		Grid:       tview.NewGrid(),
 		app:        a,
-		Subject:    data,
+		Subject:    sbj,
 		client:     a.User.Client,
 		Collection: collection,
 	}
@@ -87,7 +92,8 @@ func (s *SubjectPage) setKeyBindings() {
 	s.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
 		case 'e':
-			modal := NewCollectModal(s.app, s.Subject, s.onSave)
+
+			modal := NewEditModal(s.app, *s.Collection, s.onSave)
 			s.app.Pages.AddPage("collect", modal, true, true)
 			s.app.SetFocus(modal)
 		case 'q':
@@ -107,9 +113,23 @@ func (s *SubjectPage) setKeyBindings() {
 func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) {
 	slog.Debug("Save Subject", "collect", collection)
 	if collection == nil {
-		slog.Error("collecting subject")
+		slog.Error("collecting nil subject")
 		return
 	}
+	err := subject.PostCollection(
+		s.app.User.Client,
+		int(s.Subject.ID),
+		collection.GetStatus(),
+		collection.Tags,
+		collection.Comment,
+		int(collection.Rate),
+		collection.Private,
+	)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
+	}
+	subject.WatchToEpisode(s.app.User.Client, int(s.Subject.ID), int(collection.EpStatus))
+
 	// TODO: update collection info
 	s.Collection = collection
 	s.content.SetText(s.createText())
@@ -157,6 +177,7 @@ func (s *SubjectPage) createText() string {
 		if s.Collection.VolStatus > 0 {
 			text += fmt.Sprintf("看到第 %d 卷\n", s.Collection.VolStatus)
 		}
+		text += fmt.Sprintf("隐私收藏: %v\n", s.Collection.Private)
 	}
 	return text
 }
