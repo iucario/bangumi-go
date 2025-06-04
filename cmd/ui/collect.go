@@ -56,7 +56,8 @@ func createForm(collection api.UserSubjectCollection, closeFn func(), onSave fun
 	form.AddInputField("Episodes watched", util.Uint32ToString(collection.EpStatus), 5, nil, func(text string) {
 		epStatus, err := strconv.Atoi(text)
 		if err != nil {
-			slog.Error(fmt.Sprintf("invalid episode status %s", text))
+			slog.Error(fmt.Sprintf("invalid episode number %s", text))
+			// FIXME: alert error
 		}
 		collection.EpStatus = uint32(epStatus)
 	})
@@ -73,6 +74,7 @@ func createForm(collection api.UserSubjectCollection, closeFn func(), onSave fun
 		rate, err := strconv.Atoi(text)
 		if err != nil {
 			slog.Error(fmt.Sprintf("invalid rate %s. Must be in [0-10]", text))
+			// FIXME: alert error
 		}
 		rate = max(0, min(10, rate))
 		collection.Rate = uint32(rate)
@@ -88,7 +90,6 @@ func createForm(collection api.UserSubjectCollection, closeFn func(), onSave fun
 		closeFn()
 	})
 	form.AddButton("Cancel", func() {
-		slog.Info("cancel button clicked")
 		closeFn()
 	})
 	return form

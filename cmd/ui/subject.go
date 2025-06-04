@@ -8,6 +8,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd/subject"
+	"github.com/iucario/bangumi-go/internal/ui"
 	"github.com/rivo/tview"
 )
 
@@ -80,13 +81,13 @@ func (s *SubjectPage) render() {
 
 	// Change border color on focus/blur
 	s.leftContent.SetFocusFunc(func() {
-		s.leftContent.SetBorderColor(tcell.ColorGreen) // Focused color
+		s.leftContent.SetBorderColor(ui.Styles.TertiaryTextColor) // Focused color
 	})
 	s.leftContent.SetBlurFunc(func() {
 		s.leftContent.SetBorderColor(tcell.ColorGray) // Unfocused color
 	})
 	s.rightContent.SetFocusFunc(func() {
-		s.rightContent.SetBorderColor(tcell.ColorGreen)
+		s.rightContent.SetBorderColor(ui.Styles.TertiaryTextColor)
 	})
 	s.rightContent.SetBlurFunc(func() {
 		s.rightContent.SetBorderColor(tcell.ColorGray)

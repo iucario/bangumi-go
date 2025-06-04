@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"fmt"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -41,4 +43,53 @@ var Styles = tview.Theme{
 	TertiaryTextColor:           tcell.NewHexColor(color["green"]),
 	InverseTextColor:            tcell.NewHexColor(color["blue"]),
 	ContrastSecondaryTextColor:  tcell.NewHexColor(color["white"]),
+}
+
+func Yellow(text string) string {
+	return fmt.Sprintf("[#%06x]%s[-]", color["yellow"], text)
+}
+
+func Blue(text string) string {
+	return fmt.Sprintf("[#%06x]%s[-]", color["blue"], text)
+}
+
+func Green(text string) string {
+	return fmt.Sprintf("[#%06x]%s[-]", color["green"], text)
+}
+
+func Cyan(text string) string {
+	return fmt.Sprintf("[#%06x]%s[-]", color["cyan"], text)
+}
+
+func Red(text string) string {
+	return fmt.Sprintf("[#%06x]%s[-]", color["red"], text)
+}
+
+func Black(text string) string {
+	return fmt.Sprintf("[#%06x]%s[-]", color["black"], text)
+}
+
+func Purple(text string) string {
+	return fmt.Sprintf("[#%06x]%s[-]", color["purple"], text)
+}
+
+func White(text string) string {
+	return fmt.Sprintf("[#%06x]%s[-]", color["white"], text)
+}
+
+func ColorToHex(color tcell.Color) string {
+	r, g, b := color.RGB()
+	return fmt.Sprintf("#%02X%02X%02X", r, g, b)
+}
+
+func TertiaryText(text string) string {
+	return fmt.Sprintf("[%s]%s[-]", ColorToHex(Styles.TertiaryTextColor), text)
+}
+
+func SecondaryText(text string) string {
+	return fmt.Sprintf("[%s]%s[-]", ColorToHex(Styles.SecondaryTextColor), text)
+}
+
+func GraphicsColor(text string) string {
+	return fmt.Sprintf("[%s]%s[-]", ColorToHex(Styles.GraphicsColor), text)
 }

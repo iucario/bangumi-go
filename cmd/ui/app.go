@@ -33,12 +33,11 @@ func NewApp(user *api.User) *App {
 // Run starts the TUI application with watching list and sets up the main pages.
 func (a *App) Run() error {
 	// Add separate pages for each collection type
-	// a.OpenSubjectPage(430699) // For testing
-	// a.Pages.AddPage("watching", NewCollectionPage(a, api.Watching), true, false)
-	// a.Pages.AddPage("wish", NewCollectionPage(a, api.Wish), true, false)
-	// a.Pages.AddPage("done", NewCollectionPage(a, api.Done), true, false)
-	// a.Pages.AddPage("stashed", NewCollectionPage(a, api.OnHold), true, false)
-	// a.Pages.AddPage("dropped", NewCollectionPage(a, api.Dropped), true, false)
+	a.Pages.AddPage("watching", NewCollectionPage(a, api.Watching), true, false)
+	a.Pages.AddPage("wish", NewCollectionPage(a, api.Wish), true, false)
+	a.Pages.AddPage("done", NewCollectionPage(a, api.Done), true, false)
+	a.Pages.AddPage("stashed", NewCollectionPage(a, api.OnHold), true, false)
+	a.Pages.AddPage("dropped", NewCollectionPage(a, api.Dropped), true, false)
 	a.Pages.AddPage("calendar", NewCalendarPage(a), true, false)
 	a.Pages.AddPage("help", NewHelpPage(a), true, false)
 	a.Goto("calendar")

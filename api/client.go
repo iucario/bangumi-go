@@ -42,6 +42,7 @@ func SaveCredential(credential Credential) {
 }
 
 // Load credential JSON from file
+// TODO: should not be exported
 func LoadCredential() (Credential, error) {
 	configDir := util.ConfigDir()
 	credentialPath := fmt.Sprintf("%s/credential.json", configDir)

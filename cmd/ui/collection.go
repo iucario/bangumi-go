@@ -211,12 +211,6 @@ func newCollectionDetail(userCollection *api.UserSubjectCollection) *tview.TextV
 	return subjectView
 }
 
-// Refactor colorToStr function to a utility function in the ui package
-func colorToHex(color tcell.Color) string {
-	r, g, b := color.RGB()
-	return fmt.Sprintf("#%02X%02X%02X", r, g, b)
-}
-
 // Update createCollectionText to use the new utility function
 func createCollectionText(c *api.UserSubjectCollection) string {
 	if c == nil {
@@ -230,18 +224,18 @@ func createCollectionText(c *api.UserSubjectCollection) string {
 	if c.Subject.Eps == 0 {
 		totalEp = "Unknown"
 	}
-	text := fmt.Sprintf("[%s]%s[-]\n%s\n", colorToHex(ui.Styles.SecondaryTextColor), c.Subject.NameCn, c.Subject.Name)
+	text := fmt.Sprintf("%s\n%s\n", ui.TertiaryText(c.Subject.NameCn), c.Subject.Name)
 	text += fmt.Sprintf("%s\n\n", api.SubjectTypeRev[int(c.Subject.Type)])
 	text += fmt.Sprintf("%s...\n", c.Subject.ShortSummary)
-	text += fmt.Sprintf("\nYour Tags: [%s]%s[-]\n", colorToHex(ui.Styles.TertiaryTextColor), c.GetTags())
-	text += fmt.Sprintf("Your Rate: [%s]%s[-]\n", colorToHex(ui.Styles.TertiaryTextColor), rate)
-	text += fmt.Sprintf("Episodes Watched: [%s]%d[-] of %s\n", colorToHex(ui.Styles.TertiaryTextColor), c.EpStatus, totalEp)
+	text += fmt.Sprintf("\nYour Tags: %s\n", ui.TertiaryText(c.GetTags()))
+	text += fmt.Sprintf("Your Rate: %s\n", ui.TertiaryText(rate))
+	text += fmt.Sprintf("Episodes Watched: %s of %s\n", ui.TertiaryText(fmt.Sprintf("%d", c.EpStatus)), totalEp)
 	if c.Subject.Type == 1 { // Book
 		totalVol := "Unknown"
 		if c.Subject.Volumes != 0 {
 			totalVol = fmt.Sprintf("%d", c.Subject.Volumes)
 		}
-		text += fmt.Sprintf("Volumes Read: [%s]%d[-] of %s\n", colorToHex(ui.Styles.TertiaryTextColor), c.VolStatus, totalVol)
+		text += fmt.Sprintf("Volumes Read: %s of %s\n", ui.TertiaryText(fmt.Sprintf("%d", c.VolStatus)), totalVol)
 	}
 	text += fmt.Sprintf("Private collection: %v\n", c.Private)
 	text += "\n---------------------------------------\n\n"
