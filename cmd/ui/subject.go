@@ -13,9 +13,11 @@ import (
 
 type SubjectPage struct {
 	*tview.Grid
-	client  api.Client
-	app     *App
-	Subject *api.Subject
+	client       api.Client
+	app          *App
+	Subject      *api.Subject
+	leftContent  *tview.TextView
+	rightContent *tview.TextView
 	// Optional
 	Collection *api.UserSubjectCollection
 }
@@ -52,22 +54,50 @@ func NewSubjectPage(a *App, ID int) *SubjectPage {
 }
 
 // render displays the subject information and user collection data if available.
+// There is a header, footer and content in the middle.
+// Content has two parts, left and right content
 func (s *SubjectPage) render() {
 	s.SetRows(1, 0, 1)
-	s.SetColumns(-1)
+	s.SetColumns(40, -1)
 	s.SetBorder(false)
+	s.SetBorders(false)
+	s.SetBorderColor(tcell.ColorGray)
 	top := tview.NewTextView().SetTextAlign(tview.AlignCenter)
-	top.SetText(s.Subject.GetName())
+	top.SetText(fmt.Sprintf("%s %s", s.Subject.GetName(), api.SubjectTypeRev[int(s.Subject.Type)]))
 
-	content := s.createContentTable()
+	text := s.createLeftText()
+	rightText := s.createRightText()
+	s.leftContent = tview.NewTextView().SetDynamicColors(true).SetScrollable(true).SetWrap(true)
+	s.rightContent = tview.NewTextView().SetDynamicColors(true).SetScrollable(true).SetWrap(true)
+	s.leftContent.SetText(text)
+	s.rightContent.SetText(rightText)
+	// Initially, leftContent is focused, so show its border
+	s.leftContent.SetBorder(true)
+	s.rightContent.SetBorder(true)
+	// Set initial border color (unfocused)
+	s.leftContent.SetBorderColor(tcell.ColorGray)
+	s.rightContent.SetBorderColor(tcell.ColorGray)
 
+	// Change border color on focus/blur
+	s.leftContent.SetFocusFunc(func() {
+		s.leftContent.SetBorderColor(tcell.ColorGreen) // Focused color
+	})
+	s.leftContent.SetBlurFunc(func() {
+		s.leftContent.SetBorderColor(tcell.ColorGray) // Unfocused color
+	})
+	s.rightContent.SetFocusFunc(func() {
+		s.rightContent.SetBorderColor(tcell.ColorGreen)
+	})
+	s.rightContent.SetBlurFunc(func() {
+		s.rightContent.SetBorderColor(tcell.ColorGray)
+	})
 	footer := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
-	footer.SetText("e: 编辑  q: 返回  R: 刷新  ?: Help")
+	footer.SetText("e: 编辑  q: 返回  R: 刷新 ←/→: 移动 ↑/↓: 滚动 ?: Help")
 
-	s.AddItem(top, 0, 0, 1, 1, 0, 0, false).
-		AddItem(content, 1, 0, 1, 1, 0, 0, true).
-		AddItem(footer, 2, 0, 1, 1, 0, 0, false)
-	s.SetBorders(true)
+	s.AddItem(top, 0, 0, 1, 2, 0, 0, false).
+		AddItem(s.leftContent, 1, 0, 1, 1, 0, 0, false).
+		AddItem(s.rightContent, 1, 1, 1, 1, 0, 0, false).
+		AddItem(footer, 2, 0, 1, 2, 0, 0, false)
 }
 
 func (s *SubjectPage) Refresh() {
@@ -81,27 +111,33 @@ func (s *SubjectPage) Refresh() {
 			s.Collection = nil
 		}
 	}
-	// Re-render the page
-	s.Clear()
-	s.render()
+	s.leftContent.SetText(s.createLeftText())
+	s.rightContent.SetText(s.createRightText())
 }
 
 func (s *SubjectPage) setKeyBindings() {
 	slog.Debug("setKeyBindings called")
 	s.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Rune() {
-		case 'e':
-			modal := NewEditModal(s.app, *s.Collection, s.onSave)
-			s.app.Pages.AddPage("collect", modal, true, true)
-			s.app.SetFocus(modal)
-		case 'q':
-			// Remove subject page. Go back to previous page if any
-			s.app.GoBack()
-		case 'R':
-			s.Refresh()
+		switch event.Key() {
+		case tcell.KeyLeft:
+			s.app.SetFocus(s.leftContent)
+		case tcell.KeyRight:
+			s.app.SetFocus(s.rightContent)
 		default:
-			if s.app != nil {
-				s.app.handlePageSwitch(event.Rune())
+			switch event.Rune() {
+			case 'e':
+				modal := NewEditModal(s.app, *s.Collection, s.onSave)
+				s.app.Pages.AddPage("collect", modal, true, true)
+				s.app.SetFocus(modal)
+			case 'q':
+				// Remove subject page. Go back to previous page if any
+				s.app.GoBack()
+			case 'R':
+				s.Refresh()
+			default:
+				if s.app != nil {
+					s.app.handlePageSwitch(event.Rune())
+				}
 			}
 		}
 		return event
@@ -130,105 +166,59 @@ func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) {
 
 	// TODO: update collection info
 	s.Collection = collection
-	// Re-render the page
-	s.Clear()
-	s.render()
+	s.leftContent.SetText(s.createLeftText())
+	s.rightContent.SetText(s.createRightText())
 }
 
-func (s *SubjectPage) createContentTable() *tview.Table {
-	table := tview.NewTable().SetBorders(false)
-	table.SetSeparator(tview.Borders.Vertical)
-
-	// Helper to add a row with right-aligned name and left-aligned value
-	addRow := func(row int, name, value string) {
-		nameCell := tview.NewTableCell(name).
-			SetAlign(tview.AlignRight).
-			SetTextColor(tcell.ColorGray)
-		valueCell := tview.NewTableCell(value).
-			SetAlign(tview.AlignLeft).
-			SetTextColor(tcell.ColorWhite)
-		table.SetCell(row, 0, nameCell)
-		table.SetCell(row, 1, valueCell)
-	}
-
+func (s *SubjectPage) createLeftText() string {
+	// Compose subject info
 	totalEps := fmt.Sprintf("%d", s.Subject.Eps)
 	if s.Subject.Eps == 0 {
 		totalEps = "未知"
 	}
-
-	row := 0
-	addRow(row, "中文名", s.Subject.NameCn)
-	row++
-	addRow(row, "原名", s.Subject.Name)
-	row++
-	addRow(row, "链接", fmt.Sprintf("https://bgm.tv/subject/%d", s.Subject.ID))
-	row++
-	addRow(row, "类型", api.SubjectTypeRev[int(s.Subject.Type)])
-	row++
+	text := fmt.Sprintf("[yellow]%s[-]\n%s\n", s.Subject.NameCn, s.Subject.Name)
+	text += fmt.Sprintf("https://bgm.tv/subject/%d\n", s.Subject.ID)
 	if s.Subject.Nsfw {
-		addRow(row, "NSFW", "是")
-		row++
+		text += "[red]NSFW[-]\n"
 	}
-	addRow(row, "集数", totalEps)
-	row++
+	text += fmt.Sprintf("[yellow]集数[-]: %s\n", totalEps)
 	if s.Subject.Volumes > 0 {
-		addRow(row, "卷数", fmt.Sprintf("%d", s.Subject.Volumes))
-		row++
+		text += fmt.Sprintf("[yellow]卷数:[-] %d\n", s.Subject.Volumes)
 	}
-	addRow(row, "评分", fmt.Sprintf("%.1f", s.Subject.Rating.Score))
-	row++
-	addRow(row, "排名", fmt.Sprintf("%d", s.Subject.Rating.Rank))
-	row++
-	addRow(row, "评分人数", fmt.Sprintf("%d", s.Subject.Rating.Total))
-	row++
-	addRow(row, "标签", renderTags(s.Subject.Tags, s.Subject.WikiTags))
-	row++
+	text += fmt.Sprintf("[yellow]评分[-]: %.1f\n", s.Subject.Rating.Score)
+	text += fmt.Sprintf("[yellow]排名[-]: %d\n", s.Subject.Rating.Rank)
+	text += fmt.Sprintf("[yellow]评分人数[-]: %d\n", s.Subject.Rating.Total)
+	text += "\n收藏人数\n"
+	text += fmt.Sprintf("[yellow]在看[-]: %d\n", s.Subject.CollectionCount.Watching)
+	text += fmt.Sprintf("[yellow]想看[-]: %d\n", s.Subject.CollectionCount.Wish)
+	text += fmt.Sprintf("[yellow]看过[-]: %d\n", s.Subject.CollectionCount.Done)
+	text += fmt.Sprintf("[yellow]搁置[-]: %d\n", s.Subject.CollectionCount.OnHold)
+	text += fmt.Sprintf("[yellow]抛弃[-]: %d\n", s.Subject.CollectionCount.Dropped)
+	text += "\n"
+	text += fmt.Sprintf("[yellow]放送日期[-]: %s\n", s.Subject.Date)
 
-	// Section: 收藏人数
-	labelCell := tview.NewTableCell("[yellow]收藏人数[-]").SetAlign(tview.AlignCenter).SetSelectable(false)
-	table.SetCell(row, 0, labelCell)
-	table.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	row++
-	addRow(row, "在看", fmt.Sprintf("%d", s.Subject.CollectionCount.Watching))
-	row++
-	addRow(row, "想看", fmt.Sprintf("%d", s.Subject.CollectionCount.Wish))
-	row++
-	addRow(row, "看过", fmt.Sprintf("%d", s.Subject.CollectionCount.Done))
-	row++
-	addRow(row, "搁置", fmt.Sprintf("%d", s.Subject.CollectionCount.OnHold))
-	row++
-	addRow(row, "抛弃", fmt.Sprintf("%d", s.Subject.CollectionCount.Dropped))
-	row++
-
-	addRow(row, "放送日期", s.Subject.Date)
-	row++
-	addRow(row, "简介", s.Subject.Summary)
-	row++
-
-	// Section: 你的收藏信息
+	// Show user collection info if available
 	if s.Collection != nil && s.Collection.Type != 0 {
-		table.SetCell(row, 0, tview.NewTableCell("[yellow]你的收藏信息[-]").SetAlign(tview.AlignCenter).SetSelectable(false))
-		table.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-		row++
-		addRow(row, "状态", string(api.CollectionTypeRev[int(s.Collection.Type)]))
-		row++
-		addRow(row, "评分", fmt.Sprintf("%d", s.Collection.Rate))
-		row++
-		addRow(row, "短评", s.Collection.Comment)
-		row++
-		addRow(row, "标签", strings.Join(s.Collection.Tags, ", "))
-		row++
-		addRow(row, "看到第", fmt.Sprintf("%d/%d 集", s.Collection.EpStatus, s.Subject.Eps))
-		row++
+		text += "\n[yellow]你的收藏信息[-]:\n"
+		text += fmt.Sprintf("状态: %s\n", api.CollectionTypeRev[int(s.Collection.Type)])
+		text += fmt.Sprintf("评分: %d\n", s.Collection.Rate)
+		text += fmt.Sprintf("短评: %s\n", s.Collection.Comment)
+		text += fmt.Sprintf("标签: %s\n", strings.Join(s.Collection.Tags, ", "))
+		text += fmt.Sprintf("看到第 %d 集\n", s.Collection.EpStatus)
 		if s.Collection.VolStatus > 0 {
-			addRow(row, "看到第", fmt.Sprintf("%d 卷", s.Collection.VolStatus))
-			row++
+			text += fmt.Sprintf("看到第 %d 卷\n", s.Collection.VolStatus)
 		}
-		addRow(row, "隐私收藏", fmt.Sprintf("%v", s.Collection.Private))
-		row++
+		text += fmt.Sprintf("隐私收藏: %v\n", s.Collection.Private)
 	}
+	return text
+}
 
-	return table
+func (s *SubjectPage) createRightText() string {
+	text := ""
+	text += fmt.Sprintf("[yellow]简介[-]:\n%s\n", s.Subject.Summary)
+	text += "\n\n"
+	text += fmt.Sprintf("[yellow]标签[-]: %s\n", renderTags(s.Subject.Tags, s.Subject.WikiTags))
+	return text
 }
 
 // renderTags formats the subject tags for display, highlighting wiki tags.

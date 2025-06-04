@@ -27,6 +27,7 @@ func NewCalendarPage(app *App) *CalendarPage {
 	}
 	calendar.fetchData()
 	calendar.render()
+	calendar.setKeyBindings()
 	return calendar
 }
 
@@ -40,10 +41,8 @@ func (c *CalendarPage) fetchData() {
 }
 
 func (c *CalendarPage) render() {
-	c.SetRows(-1)     // Divide all available space equally
-	c.SetColumns(-1)  // One full-width column
-	c.SetBorder(true) // Add a border around the entire calendar
-	c.SetTitle("Anime Calendar")
+	c.SetRows(-1)    // Divide all available space equally
+	c.SetColumns(-1) // One full-width column
 	table := tview.NewTable().SetSelectable(true, true)
 	table.SetBorder(true).SetTitle("Anime Calendar")
 
@@ -130,4 +129,16 @@ func (c *CalendarPage) render() {
 
 	c.Clear()
 	c.AddItem(table, 0, 0, 1, 1, 0, 0, true)
+}
+
+func (c *CalendarPage) setKeyBindings() {
+	c.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		default:
+			if c.app != nil {
+				c.app.handlePageSwitch(event.Rune())
+			}
+		}
+		return event
+	})
 }
