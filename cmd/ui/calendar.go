@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"log/slog"
 	"sort"
 	"time"
@@ -9,14 +8,16 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd/calendar"
+	"github.com/iucario/bangumi-go/internal/ui"
 	"github.com/rivo/tview"
 )
 
 type CalendarPage struct {
 	*tview.Grid
 	client *api.HTTPClient
-	data   []api.Calendar
 	app    *App
+	data   []api.Calendar
+	table  *tview.Table
 }
 
 func NewCalendarPage(app *App) *CalendarPage {
@@ -41,16 +42,18 @@ func (c *CalendarPage) fetchData() {
 }
 
 func (c *CalendarPage) render() {
-	c.SetRows(-1)    // Divide all available space equally
+	c.SetRows(1, -1, 1)
 	c.SetColumns(-1) // One full-width column
+	header := tview.NewTextView().
+		SetText("放送日历").
+		SetTextAlign(tview.AlignCenter).
+		SetTextColor(ui.Styles.TitleColor)
 	table := tview.NewTable().SetSelectable(true, true)
-	table.SetBorder(true).SetTitle("Anime Calendar")
+	c.table = table
+	table.SetBorder(false)
 
 	// Map weekday ID to column (0=Monday, 6=Sunday)
-	weekdayToCol := map[uint32]int{1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6}
-	colToWeekday := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
-
-	// Find today's weekday column (Go: Sunday=0, our mapping: Monday=0)
+	weekdayNames := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
 	today := int(time.Now().Weekday())
 	if today == 0 {
 		today = 6 // Sunday
@@ -58,17 +61,31 @@ func (c *CalendarPage) render() {
 		today-- // Monday=0
 	}
 
-	// Header row: weekday names
-	for col, name := range colToWeekday {
-		color := tcell.ColorWhite
-		attr := tcell.AttrBold
-		if col == today {
-			color = tcell.ColorYellow
-			attr = tcell.AttrBold | tcell.AttrReverse
+	// Rotate weekdayNames so that today is first
+	rotatedWeekdayNames := append(weekdayNames[today:], weekdayNames[:today]...)
+
+	// Build mapping from weekday ID to column, with today as first column
+	weekdayToCol := make(map[uint32]int)
+	for i := range 7 {
+		// Weekday ID: 1=Mon, ..., 7=Sun
+		id := uint32((today+i)%7 + 1)
+		weekdayToCol[id] = i
+	}
+
+	// Header row: weekday names (today is first column)
+	for col, name := range rotatedWeekdayNames {
+		color := ui.Styles.PrimaryTextColor
+		bgcolor := ui.Styles.PrimitiveBackgroundColor
+		attr := tcell.AttrNone
+		if col == 0 {
+			attr = tcell.AttrBold
+			color = ui.Styles.PrimaryTextColor
+			bgcolor = ui.Styles.MoreContrastBackgroundColor
 		}
 		table.SetCell(0, col, tview.NewTableCell(name).
 			SetTextColor(color).
-			SetSelectable(false).
+			SetBackgroundColor(bgcolor).
+			SetSelectable(true).
 			SetAlign(tview.AlignCenter).
 			SetAttributes(attr))
 	}
@@ -102,11 +119,15 @@ func (c *CalendarPage) render() {
 				if anime.NameCn != "" {
 					name = anime.NameCn
 				}
-				followers := anime.CollectionCount.Wish + anime.CollectionCount.Watching + anime.CollectionCount.Done
-				cellText := fmt.Sprintf("%d+%s", followers, name)
-				cell := tview.NewTableCell(cellText).
+				// Limit name width
+				maxWidth := 10
+				runeName := []rune(name)
+				if len(runeName) > maxWidth {
+					name = string(runeName[:maxWidth-1]) + "…"
+				}
+				cell := tview.NewTableCell(name).
 					SetReference(anime.ID).
-					SetTextColor(tcell.ColorGreen).
+					SetTextColor(ui.Styles.TertiaryTextColor).
 					SetAlign(tview.AlignLeft)
 				table.SetCell(row+1, col, cell)
 			} else {
@@ -127,8 +148,13 @@ func (c *CalendarPage) render() {
 		}
 	})
 
+	footer := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
+	footer.SetText("Enter: 详情  ←/→ ↑/↓: 移动  ?: Help")
+
 	c.Clear()
-	c.AddItem(table, 0, 0, 1, 1, 0, 0, true)
+	c.AddItem(header, 0, 0, 1, 1, 0, 0, false).
+		AddItem(table, 1, 0, 1, 1, 0, 0, true).
+		AddItem(footer, 2, 0, 1, 1, 0, 0, false)
 }
 
 func (c *CalendarPage) setKeyBindings() {

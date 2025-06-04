@@ -96,7 +96,7 @@ func (s *SubjectPage) render() {
 
 	s.AddItem(top, 0, 0, 1, 2, 0, 0, false).
 		AddItem(s.leftContent, 1, 0, 1, 1, 0, 0, false).
-		AddItem(s.rightContent, 1, 1, 1, 1, 0, 0, false).
+		AddItem(s.rightContent, 1, 1, 1, 1, 0, 0, true).
 		AddItem(footer, 2, 0, 1, 2, 0, 0, false)
 }
 
