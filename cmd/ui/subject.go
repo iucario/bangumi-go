@@ -16,7 +16,6 @@ type SubjectPage struct {
 	client  api.Client
 	app     *App
 	Subject *api.Subject
-	content *tview.TextView
 	// Optional
 	Collection *api.UserSubjectCollection
 }
@@ -60,15 +59,13 @@ func (s *SubjectPage) render() {
 	top := tview.NewTextView().SetTextAlign(tview.AlignCenter)
 	top.SetText(s.Subject.GetName())
 
-	text := s.createText()
-	s.content = tview.NewTextView().SetDynamicColors(true).SetScrollable(true).SetWrap(true)
-	s.content.SetText(text)
+	content := s.createContentTable()
 
 	footer := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
 	footer.SetText("e: 编辑  q: 返回  R: 刷新  ?: Help")
 
 	s.AddItem(top, 0, 0, 1, 1, 0, 0, false).
-		AddItem(s.content, 1, 0, 1, 1, 0, 0, true).
+		AddItem(content, 1, 0, 1, 1, 0, 0, true).
 		AddItem(footer, 2, 0, 1, 1, 0, 0, false)
 	s.SetBorders(true)
 }
@@ -84,7 +81,9 @@ func (s *SubjectPage) Refresh() {
 			s.Collection = nil
 		}
 	}
-	s.content.SetText(s.createText())
+	// Re-render the page
+	s.Clear()
+	s.render()
 }
 
 func (s *SubjectPage) setKeyBindings() {
@@ -92,7 +91,6 @@ func (s *SubjectPage) setKeyBindings() {
 	s.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
 		case 'e':
-
 			modal := NewEditModal(s.app, *s.Collection, s.onSave)
 			s.app.Pages.AddPage("collect", modal, true, true)
 			s.app.SetFocus(modal)
@@ -132,54 +130,105 @@ func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) {
 
 	// TODO: update collection info
 	s.Collection = collection
-	s.content.SetText(s.createText())
+	// Re-render the page
+	s.Clear()
+	s.render()
 }
 
-func (s *SubjectPage) createText() string {
-	// Compose subject info
+func (s *SubjectPage) createContentTable() *tview.Table {
+	table := tview.NewTable().SetBorders(false)
+	table.SetSeparator(tview.Borders.Vertical)
+
+	// Helper to add a row with right-aligned name and left-aligned value
+	addRow := func(row int, name, value string) {
+		nameCell := tview.NewTableCell(name).
+			SetAlign(tview.AlignRight).
+			SetTextColor(tcell.ColorGray)
+		valueCell := tview.NewTableCell(value).
+			SetAlign(tview.AlignLeft).
+			SetTextColor(tcell.ColorWhite)
+		table.SetCell(row, 0, nameCell)
+		table.SetCell(row, 1, valueCell)
+	}
+
 	totalEps := fmt.Sprintf("%d", s.Subject.Eps)
 	if s.Subject.Eps == 0 {
 		totalEps = "未知"
 	}
-	text := fmt.Sprintf("[yellow]%s[-]\n%s\n", s.Subject.NameCn, s.Subject.Name)
-	text += fmt.Sprintf("https://bgm.tv/subject/%d\n", s.Subject.ID)
-	text += "\n--------\n"
-	text += fmt.Sprintf("[yellow]类型[-]: %s\n", api.SubjectTypeRev[int(s.Subject.Type)])
-	if s.Subject.Nsfw {
-		text += "[red]NSFW[-]\n"
-	}
-	text += fmt.Sprintf("[yellow]集数[-]: %s\n", totalEps)
-	if s.Subject.Volumes > 0 {
-		text += fmt.Sprintf("[yellow]卷数:[-] %d\n", s.Subject.Volumes)
-	}
-	text += fmt.Sprintf("[yellow]评分[-]: %.1f\n", s.Subject.Rating.Score)
-	text += fmt.Sprintf("[yellow]排名[-]: %d\n", s.Subject.Rating.Rank)
-	text += fmt.Sprintf("[yellow]评分人数[-]: %d\n", s.Subject.Rating.Total)
-	text += fmt.Sprintf("[yellow]标签[-]: %s\n", renderTags(s.Subject.Tags, s.Subject.WikiTags))
-	text += "\n收藏人数\n"
-	text += fmt.Sprintf("[yellow]在看[-]: %d\n", s.Subject.CollectionCount.Watching)
-	text += fmt.Sprintf("[yellow]想看[-]: %d\n", s.Subject.CollectionCount.Wish)
-	text += fmt.Sprintf("[yellow]看过[-]: %d\n", s.Subject.CollectionCount.Done)
-	text += fmt.Sprintf("[yellow]搁置[-]: %d\n", s.Subject.CollectionCount.OnHold)
-	text += fmt.Sprintf("[yellow]抛弃[-]: %d\n", s.Subject.CollectionCount.Dropped)
-	text += "\n--------\n"
-	text += fmt.Sprintf("[yellow]放送日期[-]: %s\n", s.Subject.Date)
-	text += fmt.Sprintf("[yellow]简介[-]: \n%s\n", s.Subject.Summary)
 
-	// Show user collection info if available
-	if s.Collection != nil && s.Collection.Type != 0 {
-		text += "\n[yellow]你的收藏信息[-]:\n"
-		text += fmt.Sprintf("状态: %s\n", api.CollectionTypeRev[int(s.Collection.Type)])
-		text += fmt.Sprintf("评分: %d\n", s.Collection.Rate)
-		text += fmt.Sprintf("短评: %s\n", s.Collection.Comment)
-		text += fmt.Sprintf("标签: %s\n", strings.Join(s.Collection.Tags, ", "))
-		text += fmt.Sprintf("看到第 %d 集\n", s.Collection.EpStatus)
-		if s.Collection.VolStatus > 0 {
-			text += fmt.Sprintf("看到第 %d 卷\n", s.Collection.VolStatus)
-		}
-		text += fmt.Sprintf("隐私收藏: %v\n", s.Collection.Private)
+	row := 0
+	addRow(row, "中文名", s.Subject.NameCn)
+	row++
+	addRow(row, "原名", s.Subject.Name)
+	row++
+	addRow(row, "链接", fmt.Sprintf("https://bgm.tv/subject/%d", s.Subject.ID))
+	row++
+	addRow(row, "类型", api.SubjectTypeRev[int(s.Subject.Type)])
+	row++
+	if s.Subject.Nsfw {
+		addRow(row, "NSFW", "是")
+		row++
 	}
-	return text
+	addRow(row, "集数", totalEps)
+	row++
+	if s.Subject.Volumes > 0 {
+		addRow(row, "卷数", fmt.Sprintf("%d", s.Subject.Volumes))
+		row++
+	}
+	addRow(row, "评分", fmt.Sprintf("%.1f", s.Subject.Rating.Score))
+	row++
+	addRow(row, "排名", fmt.Sprintf("%d", s.Subject.Rating.Rank))
+	row++
+	addRow(row, "评分人数", fmt.Sprintf("%d", s.Subject.Rating.Total))
+	row++
+	addRow(row, "标签", renderTags(s.Subject.Tags, s.Subject.WikiTags))
+	row++
+
+	// Section: 收藏人数
+	labelCell := tview.NewTableCell("[yellow]收藏人数[-]").SetAlign(tview.AlignCenter).SetSelectable(false)
+	table.SetCell(row, 0, labelCell)
+	table.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+	row++
+	addRow(row, "在看", fmt.Sprintf("%d", s.Subject.CollectionCount.Watching))
+	row++
+	addRow(row, "想看", fmt.Sprintf("%d", s.Subject.CollectionCount.Wish))
+	row++
+	addRow(row, "看过", fmt.Sprintf("%d", s.Subject.CollectionCount.Done))
+	row++
+	addRow(row, "搁置", fmt.Sprintf("%d", s.Subject.CollectionCount.OnHold))
+	row++
+	addRow(row, "抛弃", fmt.Sprintf("%d", s.Subject.CollectionCount.Dropped))
+	row++
+
+	addRow(row, "放送日期", s.Subject.Date)
+	row++
+	addRow(row, "简介", s.Subject.Summary)
+	row++
+
+	// Section: 你的收藏信息
+	if s.Collection != nil && s.Collection.Type != 0 {
+		table.SetCell(row, 0, tview.NewTableCell("[yellow]你的收藏信息[-]").SetAlign(tview.AlignCenter).SetSelectable(false))
+		table.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+		row++
+		addRow(row, "状态", string(api.CollectionTypeRev[int(s.Collection.Type)]))
+		row++
+		addRow(row, "评分", fmt.Sprintf("%d", s.Collection.Rate))
+		row++
+		addRow(row, "短评", s.Collection.Comment)
+		row++
+		addRow(row, "标签", strings.Join(s.Collection.Tags, ", "))
+		row++
+		addRow(row, "看到第", fmt.Sprintf("%d/%d 集", s.Collection.EpStatus, s.Subject.Eps))
+		row++
+		if s.Collection.VolStatus > 0 {
+			addRow(row, "看到第", fmt.Sprintf("%d 卷", s.Collection.VolStatus))
+			row++
+		}
+		addRow(row, "隐私收藏", fmt.Sprintf("%v", s.Collection.Private))
+		row++
+	}
+
+	return table
 }
 
 // renderTags formats the subject tags for display, highlighting wiki tags.
