@@ -56,3 +56,37 @@ CLI
 UI
 
 `go run . ui`
+
+## Download
+
+1. Download the binary for your platform from the [Releases](https://github.com/iucario/bangumi-go/releases) page.
+2. Make the binary executable (if required) and rename it to `bgm`:
+
+   ```sh
+   chmod +x bgm-<platform>-<arch>
+   mv bgm-<platform>-<arch> bgm
+   ```
+
+3. Move it to a directory in your PATH (e.g., `/usr/local/bin`) to make it easier to use:
+
+   ```sh
+   mv bgm /usr/local/bin/
+   ```
+
+4. Run the binary:
+
+   ```sh
+   bgm --help
+   ```
+
+For Windows, double-click the `.exe` file or run it from the command prompt.
+
+## Installation with Go
+
+If you have Go installed, you can install the binary directly using the following command:
+
+```sh
+go install github.com/iucario/bangumi-go@latest
+```
+
+This will install the `bgm` binary in your `$GOPATH/bin` or `$HOME/go/bin` directory. Make sure this directory is in your system's PATH to use the `bgm` command globally.
