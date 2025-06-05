@@ -9,12 +9,11 @@ import (
 	"os/exec"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/iucario/bangumi-go/api"
 	"github.com/spf13/cobra"
 )
-
-var ctxShutdown, _ = context.WithCancel(context.Background())
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
@@ -54,9 +53,10 @@ func BrowserLogin() {
 
 func start(ctx context.Context, wg *sync.WaitGroup) {
 	srv := &http.Server{Addr: ":9090"}
-	http.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
 		select {
-		case <-ctxShutdown.Done():
+		case <-ctx.Done():
 			fmt.Println("Context Shuting down ...")
 			return
 		default:
@@ -64,24 +64,29 @@ func start(ctx context.Context, wg *sync.WaitGroup) {
 		code := r.URL.Query().Get("code")
 		if code != "" {
 			Client.GetAccessToken(code)
+			// flush response before shutdown
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Login success. You can close this page now."))
+			flusher, ok := w.(http.Flusher)
+			if ok {
+				flusher.Flush()
+			}
 			fmt.Println("Login success.")
-			_, err := fmt.Fprintln(w, "Login success. You can close this page now.")
-			if err != nil {
-				slog.Error("Error writing response", "Error", err)
-			}
-			// shutdown
-			err = srv.Shutdown(ctx)
-			if err != nil {
-				slog.Info("server.Shutdown:", "Error", err)
-			}
+			// Give browser time to render response before shutdown
+			go func() {
+				time.Sleep(1 * time.Second)
+				if err := srv.Shutdown(context.Background()); err != nil {
+					slog.Info("server.Shutdown:", "Error", err)
+				}
+			}()
 		} else {
 			_, err := fmt.Fprintln(w, "Hi") // Server HTML page to fetch token and return to server at /auth
 			if err != nil {
 				slog.Error("Error writing response", "Error", err)
 			}
-
 		}
 	})
+	srv.Handler = mux
 
 	go func() {
 		defer wg.Done()
