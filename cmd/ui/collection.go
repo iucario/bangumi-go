@@ -24,76 +24,58 @@ type CollectionPage struct {
 	app              *App
 	ListView         *tview.List
 	DetailView       *tview.TextView
+	CurrentSubject   int // Subject ID in selection
 }
 
 // NewCollectionPage creates a list with detail page for a specific collection type.
 func NewCollectionPage(a *App, collectionStatus api.CollectionStatus) *CollectionPage {
-	collectionPage := &CollectionPage{
-		Flex:             tview.NewFlex(),
-		app:              a,
-		Name:             collectionStatus.String(),
-		CollectionStatus: collectionStatus,
-		Collections:      nil,
-		Total:            0,
-		ListView:         nil,
-		DetailView:       nil,
-	}
-	options := list.UserListOptions{
+	userCollections, err := list.ListUserCollection(a.User.Client, list.UserListOptions{
 		CollectionType: collectionStatus,
 		Username:       a.User.Username,
 		SubjectType:    "all", // TODO: add filter feature
 		Limit:          PAGE_SIZE,
 		Offset:         0,
-	}
-	userCollections, err := list.ListUserCollection(a.User.Client, options)
+	})
 	if err != nil {
 		slog.Error("Failed to fetch collections", "Error", err)
 		return nil
 	}
-	collectionPage.Collections = userCollections.Data
-	collectionPage.Total = int(userCollections.Total)
-	collectionPage.initLayout()
+	collectionPage := &CollectionPage{
+		Flex:             tview.NewFlex(),
+		app:              a,
+		Name:             collectionStatus.String(),
+		CollectionStatus: collectionStatus,
+		Collections:      userCollections.Data,
+		Total:            int(userCollections.Total),
+		ListView:         nil,
+		DetailView:       nil,
+		CurrentSubject:   int(userCollections.Data[0].Subject.ID),
+	}
 	collectionPage.render()
 	collectionPage.setKeyBindings()
 	return collectionPage
 }
 
-func (c *CollectionPage) initLayout() {
+func (c *CollectionPage) render() {
 	c.Clear()
 	c.ListView = tview.NewList()
-	c.ListView.SetBorder(true).SetTitle(fmt.Sprintf("List %s", c.CollectionStatus)).SetTitleAlign(tview.AlignLeft)
+	c.ListView.SetBorder(true).SetTitleAlign(tview.AlignLeft)
 	c.ListView.SetWrapAround(false)
 
 	c.DetailView = newCollectionDetail(nil)
 	c.DetailView.SetScrollable(true)
+	c.renderListItems()
+	c.renderDetail()
 
 	// Scroll with j/k keys
 	c.ListView.SetInputCapture(handleScrollKeys(c.ListView))
 	c.DetailView.SetInputCapture(handleScrollKeys(c.DetailView))
-}
-
-func (c *CollectionPage) render() {
-	if len(c.Collections) > 0 {
-		c.DetailView = newCollectionDetail(&c.Collections[0])
-		slog.Debug("render first collection")
-	}
-
-	// Update title to show total items
-	c.ListView.SetTitle(fmt.Sprintf("List %s (%d/%d)", c.CollectionStatus, len(c.Collections), c.Total))
-
-	for _, collection := range c.Collections {
-		name := collection.Subject.NameCn
-		if name == "" {
-			name = collection.Subject.Name
-		}
-		c.ListView.AddItem(name, "", 0, nil)
-	}
 
 	c.ListView.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
 		if index >= 0 && index < len(c.Collections) {
-			collection := c.Collections[index]
-			slog.Debug(fmt.Sprintf("Selected %s", collection.Subject.Name))
-			c.DetailView.SetText(createCollectionText(&collection))
+			slog.Debug(fmt.Sprintf("Selected %s", c.Collections[index].Subject.Name))
+			c.CurrentSubject = int(c.Collections[index].Subject.ID)
+			c.renderDetail()
 		}
 	})
 
@@ -105,13 +87,34 @@ func (c *CollectionPage) render() {
 		}
 	})
 
+	c.Clear()
 	c.Flex.AddItem(c.ListView, 0, 2, true).
 		AddItem(c.DetailView, 0, 3, false)
 	c.Flex.SetFullScreen(true).SetBorderPadding(0, 0, 0, 0)
 }
 
-// LoadPage loads next page of a collection list
-func (c *CollectionPage) LoadPage() {
+func (c *CollectionPage) Refresh() {
+	collections, err := list.ListUserCollection(c.app.User.Client, list.UserListOptions{
+		CollectionType: c.CollectionStatus,
+		Username:       c.app.User.Username,
+		SubjectType:    "all", // TODO: add filter feature
+		Limit:          PAGE_SIZE,
+		Offset:         0,
+	})
+	if err != nil {
+		slog.Error("Failed to refresh collections", "Error", err)
+		return
+	}
+
+	c.Collections = collections.Data
+	c.Total = int(collections.Total)
+	c.CurrentSubject = int(collections.Data[0].Subject.ID)
+	c.renderListItems()
+	c.renderDetail()
+}
+
+// LoadNextPage loads next page of a collection list
+func (c *CollectionPage) LoadNextPage() {
 	size := len(c.Collections)
 
 	// Don't load more if we have all items
@@ -120,15 +123,13 @@ func (c *CollectionPage) LoadPage() {
 		slog.Info("No more items to load")
 		return
 	}
-
-	options := list.UserListOptions{
+	collections, err := list.ListUserCollection(c.app.User.Client, list.UserListOptions{
 		CollectionType: c.CollectionStatus,
 		Username:       c.app.User.Username,
 		SubjectType:    "all",
 		Limit:          PAGE_SIZE,
 		Offset:         size,
-	}
-	collections, err := list.ListUserCollection(c.app.User.Client, options)
+	})
 	if err != nil {
 		slog.Error("Failed to fetch collections", "Error", err)
 		return
@@ -143,11 +144,7 @@ func (c *CollectionPage) LoadPage() {
 
 	// Add new items to list view
 	for _, collection := range collections.Data {
-		name := collection.Subject.NameCn
-		if name == "" {
-			name = collection.Subject.Name
-		}
-		c.ListView.AddItem(name, "", 0, nil)
+		c.ListView.AddItem(collection.Name(), "", 0, nil)
 	}
 
 	// Update title to show progress
@@ -184,8 +181,7 @@ func (c *CollectionPage) setKeyBindings() {
 				slog.Debug("refresh")
 				c.Refresh()
 			case 'n':
-				slog.Debug("next page")
-				c.LoadPage()
+				c.LoadNextPage()
 			default:
 				c.app.handlePageSwitch(event.Rune())
 			}
@@ -194,13 +190,63 @@ func (c *CollectionPage) setKeyBindings() {
 	})
 }
 
-// Refresh recreates the user collection pages.
-func (c *CollectionPage) Refresh() {
-	for _, status := range STATUS_LIST {
-		c.app.Pages.RemovePage(status)
-		c.app.Pages.AddPage(status, NewCollectionPage(c.app, api.CollectionStatus(status)), true, false)
+// Render the list view and detail view based on collection data
+func (c *CollectionPage) renderListItems() {
+	c.ListView.Clear()
+	c.ListView.SetTitle(fmt.Sprintf("List %s (%d/%d)", c.CollectionStatus, len(c.Collections), c.Total))
+
+	for _, collection := range c.Collections {
+		c.ListView.AddItem(collection.Name(), "", 0, nil)
 	}
-	c.app.Goto(c.Name)
+}
+
+// Render the detail view based on the current selection
+func (c *CollectionPage) renderDetail() {
+	currentIndex := indexOfCollection(c.Collections, uint32(c.CurrentSubject))
+	if 0 <= currentIndex && currentIndex < len(c.Collections) {
+		c.DetailView.SetText(createCollectionText(&c.Collections[currentIndex]))
+	} else {
+		c.DetailView.SetText("No data")
+	}
+}
+
+func (c *CollectionPage) onSave(collection *api.UserSubjectCollection) {
+	slog.Debug("save button clicked")
+	slog.Debug("posting collection...")
+	err := subject.PostCollection(c.app.User.Client, int(collection.SubjectID), collection.GetStatus(),
+		collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
+	if err != nil {
+		slog.Error("Failed to post collection", "Error", err)
+	}
+	subject.WatchToEpisode(c.app.User.Client, int(collection.SubjectID), int(collection.EpStatus))
+
+	// Reorder the list and update the data in the watch list
+	updatedIndex := indexOfCollection(c.Collections, collection.SubjectID)
+	if updatedIndex <= 0 {
+		slog.Error("Collection not found in the list")
+		return
+	}
+	c.Collections = toFrontItem(c.Collections, updatedIndex)
+	c.Collections[0] = *collection
+	c.renderListItems()
+	c.renderDetail()
+	// TODO: update other collection page if needed
+	// The updated collection may go to other collection page
+}
+
+// Select a subject in the collection page by its ID.
+// Updates the list and detail views accordingly, and sets the selection field.
+func (c *CollectionPage) Select(subjectID int) {
+	slog.Debug(fmt.Sprintf("Select subject %d in collection page", subjectID))
+	index := indexOfCollection(c.Collections, uint32(subjectID))
+	if index < 0 || index >= len(c.Collections) {
+		slog.Error("Subject not found in the collection")
+		return
+	}
+	c.ListView.SetCurrentItem(index)
+	c.DetailView.SetText(createCollectionText(&c.Collections[index]))
+	c.CurrentSubject = index
+	c.app.SetFocus(c.ListView)
 }
 
 // newCollectionDetail creates a text view for the selected collection.
@@ -248,38 +294,14 @@ func createCollectionText(c *api.UserSubjectCollection) string {
 }
 
 // Move the item at index to the front of the slice
-func reorderedSlice(collections []api.UserSubjectCollection, index int) []api.UserSubjectCollection {
+func toFrontItem(collections []api.UserSubjectCollection, index int) []api.UserSubjectCollection {
 	if index < 0 || index >= len(collections) {
 		return collections
 	}
 	collection := collections[index]
 	collections = slices.Delete(collections, index, index+1)
-	return append([]api.UserSubjectCollection{collection}, collections...)
-}
-
-func (c *CollectionPage) onSave(collection *api.UserSubjectCollection) {
-	slog.Debug("save button clicked")
-	slog.Debug("posting collection...")
-	prevStatus := c.CollectionStatus
-	err := subject.PostCollection(c.app.User.Client, int(collection.SubjectID), collection.GetStatus(),
-		collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
-	}
-	subject.WatchToEpisode(c.app.User.Client, int(collection.SubjectID), int(collection.EpStatus))
-
-	// Reorder the list and update the data in the watch list
-	updatedIndex := indexOfCollection(c.Collections, collection.SubjectID)
-	if updatedIndex != -1 {
-		newCollections := reorderedSlice(c.Collections, updatedIndex)
-		c.Collections = newCollections
-		c.Collections[0] = *collection
-		// Update the page
-		// FIXME: should update other pages
-		newPage := NewCollectionPage(c.app, prevStatus)
-		c.app.Pages.RemovePage(prevStatus.String())                    // What's this?
-		c.app.Pages.AddPage(prevStatus.String(), newPage, true, false) // TODO: refresh elegantly
-		c.app.Goto(prevStatus.String())
-		c.app.SetFocus(newPage)
-	}
+	newSlice := make([]api.UserSubjectCollection, 0, len(collections)+1)
+	newSlice = append(newSlice, collection)
+	newSlice = append(newSlice, collections...)
+	return newSlice
 }

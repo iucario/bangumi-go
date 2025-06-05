@@ -99,6 +99,34 @@ type UserSubjectCollection struct {
 	Private     bool        `json:"private"`
 }
 
+// Return subject NameCn if available, otherwise return Name
+func (c UserSubjectCollection) Name() string {
+	if c.Subject.NameCn != "" {
+		return c.Subject.NameCn
+	}
+	return c.Subject.Name
+}
+
+func (c *UserSubjectCollection) GetStatus() CollectionStatus {
+	return CollectionTypeRev[int(c.Type)]
+}
+
+func (c *UserSubjectCollection) SetStatus(status CollectionStatus) {
+	c.Type = uint32(CollectionType[status])
+}
+
+func (c *UserSubjectCollection) GetSubjectType() string {
+	return SubjectTypeRev[int(c.SubjectType)]
+}
+
+func (c *UserSubjectCollection) GetTags() string {
+	return strings.Join(c.Tags, " ")
+}
+
+func (c *UserSubjectCollection) GetAllTags() string {
+	return TagNames(c.Subject.Tags)
+}
+
 type Subject struct {
 	Images          map[string]string `json:"images"`
 	Name            string            `json:"name"`
@@ -220,26 +248,6 @@ type Weekday struct {
 	EN string `json:"en"`
 	CN string `json:"cn"`
 	JA string `json:"ja"`
-}
-
-func (c *UserSubjectCollection) GetStatus() CollectionStatus {
-	return CollectionTypeRev[int(c.Type)]
-}
-
-func (c *UserSubjectCollection) SetStatus(status CollectionStatus) {
-	c.Type = uint32(CollectionType[status])
-}
-
-func (c *UserSubjectCollection) GetSubjectType() string {
-	return SubjectTypeRev[int(c.SubjectType)]
-}
-
-func (c *UserSubjectCollection) GetTags() string {
-	return strings.Join(c.Tags, " ")
-}
-
-func (c *UserSubjectCollection) GetAllTags() string {
-	return TagNames(c.Subject.Tags)
 }
 
 func (s *Subject) GetName() string {

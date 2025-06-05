@@ -41,7 +41,7 @@ var calendarCmd = &cobra.Command{
 				if item.NameCn != "" {
 					name = item.NameCn
 				}
-				// FIXME: API error, there is only Watching count
+				// Known issue API error, there is only Watching count
 				followers := item.CollectionCount.Wish + item.CollectionCount.Watching + item.CollectionCount.Done
 				fmt.Printf("%6d + %s\n", followers, name)
 			}
