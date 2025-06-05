@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"io"
 	"log/slog"
 	"os"
 
@@ -14,18 +14,18 @@ import (
 )
 
 func main() {
-	logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Failed to open log file: %v", err))
+
+	var logOutput = os.Stderr
+
+	handler := slog.NewJSONHandler(io.Discard, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	})
+	if os.Getenv("BGM_ENV") == "dev" {
+		handler = slog.NewJSONHandler(logOutput, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})
 	}
-	defer func() {
-		if err := logFile.Close(); err != nil {
-			slog.Error(fmt.Sprintf("Failed to close log file: %v", err))
-		}
-	}()
-	logger := slog.New(slog.NewJSONHandler(logFile, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
+	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
 	cmd.Execute()

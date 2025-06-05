@@ -2,10 +2,10 @@ lint:
 	gofumpt -w . && golangci-lint run
 
 run:
-	go run .
+	BGM_ENV=dev go run .
 
 ui:
-	go run . ui
+	BGM_ENV=dev go run . ui
 
 
 build:
