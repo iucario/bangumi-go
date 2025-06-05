@@ -2,6 +2,8 @@
 
 Bangumi CLI and TUI in Golang
 
+It is under active development and features will change.
+
 ## Commands
 
 - `auth`
@@ -20,6 +22,17 @@ Bangumi CLI and TUI in Golang
   Show calendar (airing animes)
 - `ui`
   Start terminal UI
+
+## Screenshots
+
+Calendar
+![calendar](./image/cal.png)
+
+![subject](./image/subject.png)
+
+![collection](./image/collection.png)
+
+![collect](./image/collect.png)
 
 ## Development
 

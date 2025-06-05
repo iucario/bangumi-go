@@ -1,5 +1,5 @@
 lint:
-	~/go/bin/gofumpt -w . && golangci-lint run
+	gofumpt -w . && golangci-lint run
 
 run:
 	go run .
@@ -9,4 +9,4 @@ ui:
 
 
 build:
-	go build -o dist/bgm-cli
+	go build -o dist/bgm
