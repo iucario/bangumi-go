@@ -40,6 +40,10 @@ func NewCollectionPage(a *App, collectionStatus api.CollectionStatus) *Collectio
 		slog.Error("Failed to fetch collections", "Error", err)
 		return nil
 	}
+	currentSubject := 0
+	if len(userCollections.Data) > 0 {
+		currentSubject = int(userCollections.Data[0].Subject.ID)
+	}
 	collectionPage := &CollectionPage{
 		Flex:             tview.NewFlex(),
 		app:              a,
@@ -49,7 +53,7 @@ func NewCollectionPage(a *App, collectionStatus api.CollectionStatus) *Collectio
 		Total:            int(userCollections.Total),
 		ListView:         nil,
 		DetailView:       nil,
-		CurrentSubject:   int(userCollections.Data[0].Subject.ID),
+		CurrentSubject:   currentSubject,
 	}
 	collectionPage.render()
 	collectionPage.setKeyBindings()
@@ -108,7 +112,11 @@ func (c *CollectionPage) Refresh() {
 
 	c.Collections = collections.Data
 	c.Total = int(collections.Total)
-	c.CurrentSubject = int(collections.Data[0].Subject.ID)
+	if len(collections.Data) > 0 {
+		c.CurrentSubject = int(collections.Data[0].Subject.ID)
+	} else {
+		c.CurrentSubject = 0
+	}
 	c.renderListItems()
 	c.renderDetail()
 }
@@ -174,6 +182,10 @@ func (c *CollectionPage) setKeyBindings() {
 					return event
 				}
 				index := listView.GetCurrentItem()
+				if index < 0 || index >= len(collections) {
+					slog.Warn("Invalid collection index for edit")
+					return event
+				}
 				modal := NewEditModal(c.app, collections[index], c.onSave)
 				c.app.Pages.AddPage("collect", modal, true, true)
 				c.app.SetFocus(modal)
