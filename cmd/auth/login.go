@@ -66,7 +66,10 @@ func start(ctx context.Context, wg *sync.WaitGroup) {
 			Client.GetAccessToken(code)
 			// flush response before shutdown
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Login success. You can close this page now."))
+			_, err := w.Write([]byte("Login success. You can close this page now."))
+			if err != nil {
+				slog.Error("response", "error", err)
+			}
 			flusher, ok := w.(http.Flusher)
 			if ok {
 				flusher.Flush()

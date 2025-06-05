@@ -14,8 +14,7 @@ import (
 )
 
 func main() {
-
-	var logOutput = os.Stderr
+	logOutput := os.Stderr
 
 	handler := slog.NewJSONHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
