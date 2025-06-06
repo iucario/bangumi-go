@@ -86,8 +86,8 @@ func (c *CollectionPage) render() {
 	// Open Subject page on click(enter/space)
 	c.ListView.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
 		if index >= 0 && index < len(c.Collections) {
-			id := int(c.Collections[index].Subject.ID)
-			c.app.OpenSubjectPage(id, c.Name)
+			subID := int(c.Collections[index].Subject.ID)
+			c.app.OpenSubjectPage(subID, c.Name)
 		}
 	})
 

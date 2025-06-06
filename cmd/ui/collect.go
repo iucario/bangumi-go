@@ -81,7 +81,7 @@ func createForm(collection api.UserSubjectCollection, closeFn func(), onSave fun
 		rate = max(0, min(10, rate))
 		collection.Rate = uint32(rate)
 	})
-	form.AddInputField("Comment", collection.Comment, 0, nil, func(text string) {
+	form.AddTextArea("Comment", collection.Comment, 0, 3, 200, func(text string) {
 		collection.Comment = text
 	})
 	form.AddCheckbox("Private", collection.Private, func(checked bool) {
