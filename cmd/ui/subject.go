@@ -36,7 +36,7 @@ func NewSubjectPage(a *App, ID int) *SubjectPage {
 			collection = &api.UserSubjectCollection{
 				SubjectType: sbj.Type,
 				Subject:     sbj.ToSlimSubject(),
-				Type:        uint32(api.CollectionType[api.Watching]),
+				Type:        0,
 				SubjectID:   sbj.ID,
 			}
 		}
@@ -198,7 +198,7 @@ func (s *SubjectPage) createLeftText() string {
 	// Show user collection info if available
 	if s.Collection != nil && s.Collection.Type != 0 {
 		text += ui.SecondaryText("\n你的收藏信息:\n")
-		text += fmt.Sprintf("状态: %s\n", api.CollectionTypeRev[int(s.Collection.Type)])
+		text += fmt.Sprintf("状态: %s\n", s.Collection.GetStatus())
 		text += fmt.Sprintf("评分: %d\n", s.Collection.Rate)
 		text += fmt.Sprintf("短评: %s\n", s.Collection.Comment)
 		text += fmt.Sprintf("标签: %s\n", strings.Join(s.Collection.Tags, ", "))

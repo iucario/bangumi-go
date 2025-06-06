@@ -48,7 +48,6 @@ func NewEditModal(a *App, collection api.UserSubjectCollection, onSave func(*api
 
 // createForm creates a form for editing the collection.
 func createForm(collection api.UserSubjectCollection, closeFn func(), onSave func(*api.UserSubjectCollection)) *tview.Form {
-	status := util.IndexOfString(STATUS_LIST, collection.GetStatus().String())
 	initTags := collection.GetTags()
 
 	form := tview.NewForm()
@@ -62,8 +61,11 @@ func createForm(collection api.UserSubjectCollection, closeFn func(), onSave fun
 		collection.EpStatus = uint32(epStatus)
 	})
 
-	form.AddDropDown("Status", STATUS_LIST, status, func(option string, optionIndex int) {
-		slog.Debug(fmt.Sprintf("selected %s", option))
+	statusIndex := util.IndexOfString(STATUS_LIST, collection.GetStatus().String())
+	if statusIndex == -1 {
+		statusIndex = 2 // Default to watching if not set
+	}
+	form.AddDropDown("Status", STATUS_LIST, statusIndex, func(option string, optionIndex int) {
 		collection.SetStatus(api.CollectionStatus(option))
 	})
 	form.AddInputField("Tags(Separate by spaces)", initTags, 0, nil, func(text string) {

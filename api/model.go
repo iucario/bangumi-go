@@ -108,7 +108,10 @@ func (c UserSubjectCollection) Name() string {
 }
 
 func (c *UserSubjectCollection) GetStatus() CollectionStatus {
-	return CollectionTypeRev[int(c.Type)]
+	if status, ok := CollectionTypeRev[int(c.Type)]; ok {
+		return status
+	}
+	return CollectionStatus("NULL")
 }
 
 func (c *UserSubjectCollection) SetStatus(status CollectionStatus) {
