@@ -70,8 +70,7 @@ func start(wg *sync.WaitGroup) {
 			fmt.Println("Login success.")
 			w.Header().Set("Connection", "close")
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			fmt.Fprintln(w, "Login success. You can close this page now.")
-			// Give browser time to render response before shutdown
+			fmt.Fprint(w, successHTML())
 			go func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
@@ -109,6 +108,50 @@ func openBrowser(url string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// successHTML returns the HTML for the success page
+func successHTML() string {
+	return `<!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Successful</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+        }
+        h1 {
+            color: #F09199;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 18px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Authentication Successful</h1>
+        <p>Login successful. You can close this page now.</p>
+    </div>
+</body>
+</html>`
 }
 
 func init() {
