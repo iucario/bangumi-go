@@ -160,7 +160,6 @@ func (c *CollectionPage) LoadNextPage() {
 }
 
 func (c *CollectionPage) setKeyBindings() {
-	collections := c.Collections
 	listView := c.ListView
 	detailView := c.DetailView
 	c.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -177,16 +176,16 @@ func (c *CollectionPage) setKeyBindings() {
 				c.app.SetFocus(listView)
 			case 'e':
 				slog.Debug("collect")
-				if len(collections) == 0 {
+				if len(c.Collections) == 0 {
 					slog.Warn("No collection to edit")
 					return event
 				}
 				index := listView.GetCurrentItem()
-				if index < 0 || index >= len(collections) {
+				if index < 0 || index >= len(c.Collections) {
 					slog.Warn("Invalid collection index for edit")
 					return event
 				}
-				modal := NewEditModal(c.app, collections[index], c.onSave)
+				modal := NewEditModal(c.app, c.Collections[index], c.onSave)
 				c.app.Pages.AddPage("collect", modal, true, true)
 				c.app.SetFocus(modal)
 			case 'R':
