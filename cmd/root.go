@@ -15,7 +15,6 @@ var RootCmd = &cobra.Command{
 	Use:   "bgm",
 	Short: "bgm is a command line tool for Bangumi.tv",
 	Run: func(cmd *cobra.Command, args []string) {
-
 	},
 }
 

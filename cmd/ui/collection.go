@@ -281,7 +281,12 @@ func createCollectionText(c *api.UserSubjectCollection) string {
 	if c.Subject.Eps == 0 {
 		totalEp = "Unknown"
 	}
-	text := fmt.Sprintf("%s\n%s\n", ui.TertiaryText(c.Subject.NameCn), c.Subject.Name)
+	text := ""
+	if c.Subject.NameCn == "" {
+		text += fmt.Sprintf("%s\n", ui.TertiaryText(c.Subject.Name))
+	} else {
+		text += fmt.Sprintf("%s\n%s\n", ui.TertiaryText(c.Subject.NameCn), c.Subject.Name)
+	}
 	text += fmt.Sprintf("%s\n\n", api.SubjectTypeRev[int(c.Subject.Type)])
 	text += fmt.Sprintf("%s...\n", c.Subject.ShortSummary)
 	text += fmt.Sprintf("\nYour Tags: %s\n", ui.TertiaryText(c.GetTags()))
