@@ -51,6 +51,7 @@ func (c *CalendarPage) render() {
 	table := tview.NewTable().SetSelectable(true, true)
 	c.table = table
 	table.SetBorder(false)
+	table.SetFixed(1, 0)
 
 	// Map weekday ID to column (0=Monday, 6=Sunday)
 	weekdayNames := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
@@ -75,11 +76,10 @@ func (c *CalendarPage) render() {
 	// Header row: weekday names (today is first column)
 	for col, name := range rotatedWeekdayNames {
 		color := ui.Styles.PrimaryTextColor
-		bgcolor := ui.Styles.PrimitiveBackgroundColor
+		bgcolor := ui.Styles.ContrastBackgroundColor
 		attr := tcell.AttrNone
 		if col == 0 {
 			attr = tcell.AttrBold
-			color = ui.Styles.PrimaryTextColor
 			bgcolor = ui.Styles.MoreContrastBackgroundColor
 		}
 		table.SetCell(0, col, tview.NewTableCell(name).
@@ -127,7 +127,7 @@ func (c *CalendarPage) render() {
 				}
 				cell := tview.NewTableCell(name).
 					SetReference(anime.ID).
-					SetTextColor(ui.Styles.TertiaryTextColor).
+					SetTextColor(ui.Styles.PrimaryTextColor).
 					SetAlign(tview.AlignLeft)
 				table.SetCell(row+1, col, cell)
 			} else {

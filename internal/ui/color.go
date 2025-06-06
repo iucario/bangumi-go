@@ -35,13 +35,13 @@ var Styles = tview.Theme{
 	PrimitiveBackgroundColor:    tcell.NewHexColor(color["background"]),
 	ContrastBackgroundColor:     tcell.NewHexColor(color["blue"]),
 	MoreContrastBackgroundColor: tcell.NewHexColor(color["purple"]),
-	BorderColor:                 tcell.NewHexColor(color["white"]),
-	TitleColor:                  tcell.NewHexColor(color["white"]),
+	BorderColor:                 tcell.ColorGrey,
+	TitleColor:                  tcell.NewHexColor(color["cyan"]),
 	GraphicsColor:               tcell.NewHexColor(color["red"]),
 	PrimaryTextColor:            tcell.NewHexColor(color["white"]),
 	SecondaryTextColor:          tcell.NewHexColor(color["yellow"]),
 	TertiaryTextColor:           tcell.NewHexColor(color["green"]),
-	InverseTextColor:            tcell.NewHexColor(color["blue"]),
+	InverseTextColor:            tcell.NewHexColor(color["brightBlue"]),
 	ContrastSecondaryTextColor:  tcell.NewHexColor(color["white"]),
 }
 
@@ -92,4 +92,12 @@ func SecondaryText(text string) string {
 
 func GraphicsColor(text string) string {
 	return fmt.Sprintf("[%s]%s[-]", ColorToHex(Styles.GraphicsColor), text)
+}
+
+func BorderColor(text string) string {
+	return fmt.Sprintf("[%s]%s[-]", ColorToHex(Styles.BorderColor), text)
+}
+
+func TitleColor(text string) string {
+	return fmt.Sprintf("[%s]%s[-]", ColorToHex(Styles.TitleColor), text)
 }

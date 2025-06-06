@@ -75,19 +75,16 @@ func (s *SubjectPage) render() {
 	// Initially, leftContent is focused, so show its border
 	s.leftContent.SetBorder(true)
 	s.rightContent.SetBorder(true)
-	// Set initial border color (unfocused)
-	s.leftContent.SetBorderColor(tcell.ColorGray)
-	s.rightContent.SetBorderColor(tcell.ColorGray)
 
 	// Change border color on focus/blur
 	s.leftContent.SetFocusFunc(func() {
-		s.leftContent.SetBorderColor(ui.Styles.TertiaryTextColor) // Focused color
+		s.leftContent.SetBorderColor(ui.Styles.TitleColor) // Focused color
 	})
 	s.leftContent.SetBlurFunc(func() {
 		s.leftContent.SetBorderColor(tcell.ColorGray) // Unfocused color
 	})
 	s.rightContent.SetFocusFunc(func() {
-		s.rightContent.SetBorderColor(ui.Styles.TertiaryTextColor)
+		s.rightContent.SetBorderColor(ui.Styles.TitleColor)
 	})
 	s.rightContent.SetBlurFunc(func() {
 		s.rightContent.SetBorderColor(tcell.ColorGray)
@@ -177,30 +174,30 @@ func (s *SubjectPage) createLeftText() string {
 	if s.Subject.Eps == 0 {
 		totalEps = "未知"
 	}
-	text := fmt.Sprintf("[yellow]%s[-]\n%s\n", s.Subject.NameCn, s.Subject.Name)
+	text := fmt.Sprintf("%s\n%s\n", ui.SecondaryText(s.Subject.NameCn), s.Subject.Name)
 	text += fmt.Sprintf("https://bgm.tv/subject/%d\n", s.Subject.ID)
 	if s.Subject.Nsfw {
-		text += "[red]NSFW[-]\n"
+		text += ui.GraphicsColor("NSFW") + "\n"
 	}
-	text += fmt.Sprintf("[yellow]集数[-]: %s\n", totalEps)
+	text += fmt.Sprintf("集数: %s\n", totalEps)
 	if s.Subject.Volumes > 0 {
-		text += fmt.Sprintf("[yellow]卷数:[-] %d\n", s.Subject.Volumes)
+		text += fmt.Sprintf("卷数: %d\n", s.Subject.Volumes)
 	}
-	text += fmt.Sprintf("[yellow]评分[-]: %.1f\n", s.Subject.Rating.Score)
-	text += fmt.Sprintf("[yellow]排名[-]: %d\n", s.Subject.Rating.Rank)
-	text += fmt.Sprintf("[yellow]评分人数[-]: %d\n", s.Subject.Rating.Total)
-	text += "\n收藏人数\n"
-	text += fmt.Sprintf("[yellow]在看[-]: %d\n", s.Subject.CollectionCount.Watching)
-	text += fmt.Sprintf("[yellow]想看[-]: %d\n", s.Subject.CollectionCount.Wish)
-	text += fmt.Sprintf("[yellow]看过[-]: %d\n", s.Subject.CollectionCount.Done)
-	text += fmt.Sprintf("[yellow]搁置[-]: %d\n", s.Subject.CollectionCount.OnHold)
-	text += fmt.Sprintf("[yellow]抛弃[-]: %d\n", s.Subject.CollectionCount.Dropped)
+	text += fmt.Sprintf("评分: %.1f\n", s.Subject.Rating.Score)
+	text += fmt.Sprintf("排名: %d\n", s.Subject.Rating.Rank)
+	text += fmt.Sprintf("评分人数: %d\n", s.Subject.Rating.Total)
+	text += ui.SecondaryText("\n收藏人数\n")
+	text += fmt.Sprintf("在看: %d\n", s.Subject.CollectionCount.Watching)
+	text += fmt.Sprintf("想看: %d\n", s.Subject.CollectionCount.Wish)
+	text += fmt.Sprintf("看过: %d\n", s.Subject.CollectionCount.Done)
+	text += fmt.Sprintf("搁置: %d\n", s.Subject.CollectionCount.OnHold)
+	text += fmt.Sprintf("抛弃: %d\n", s.Subject.CollectionCount.Dropped)
 	text += "\n"
-	text += fmt.Sprintf("[yellow]放送日期[-]: %s\n", s.Subject.Date)
+	text += fmt.Sprintf("放送日期: %s\n", ui.SecondaryText(s.Subject.Date))
 
 	// Show user collection info if available
 	if s.Collection != nil && s.Collection.Type != 0 {
-		text += "\n[yellow]你的收藏信息[-]:\n"
+		text += ui.SecondaryText("\n你的收藏信息:\n")
 		text += fmt.Sprintf("状态: %s\n", api.CollectionTypeRev[int(s.Collection.Type)])
 		text += fmt.Sprintf("评分: %d\n", s.Collection.Rate)
 		text += fmt.Sprintf("短评: %s\n", s.Collection.Comment)
@@ -216,9 +213,9 @@ func (s *SubjectPage) createLeftText() string {
 
 func (s *SubjectPage) createRightText() string {
 	text := ""
-	text += fmt.Sprintf("[yellow]简介[-]:\n%s\n", s.Subject.Summary)
+	text += fmt.Sprintf("%s\n", s.Subject.Summary)
 	text += "\n\n"
-	text += fmt.Sprintf("[yellow]标签[-]: %s\n", renderTags(s.Subject.Tags, s.Subject.WikiTags))
+	text += fmt.Sprintf("标签: %s\n", renderTags(s.Subject.Tags, s.Subject.WikiTags))
 	return text
 }
 
@@ -232,7 +229,7 @@ func renderTags(tags []api.Tag, wikiTags []string) string {
 	for _, tag := range tags {
 		text := fmt.Sprintf("%s•%d", tag.Name, tag.Count)
 		if _, ok := wiki[tag.Name]; ok {
-			text = fmt.Sprintf("[blue]%s[-]", text)
+			text = fmt.Sprint(ui.TitleColor(text))
 		}
 		arr = append(arr, text)
 	}
