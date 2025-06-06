@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -9,16 +10,17 @@ import (
 	"os/exec"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/iucario/bangumi-go/api"
 	"github.com/spf13/cobra"
 )
 
-var ctxShutdown, _ = context.WithCancel(context.Background())
+var port = 9090
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "Login to https://bangumi.tv",
+	Short: "Login to https://bgm.tv (bangumi.tv)",
 	Run: func(cmd *cobra.Command, args []string) {
 		_, err := api.LoadCredential()
 		if err != nil {
@@ -36,57 +38,62 @@ var loginCmd = &cobra.Command{
 }
 
 func BrowserLogin() {
-	fmt.Println("Login to https://bangumi.tv")
+	fmt.Println("Login to https://bgm.tv")
 	apiAuth := "https://bgm.tv/oauth/authorize"
 	responseType := "code"
-	host := "http://localhost:9090/auth"
+	host := fmt.Sprintf("http://localhost:%d/auth", port)
 	LOGIN_URL := fmt.Sprintf("%s?client_id=%s&response_type=%s&redirect_uri=%s", apiAuth, api.ClientId, responseType, host)
+
+	serverDone := &sync.WaitGroup{}
+	serverDone.Add(1)
+	start(serverDone)
 
 	openBrowser(LOGIN_URL)
 	fmt.Println("If your browser is not opened automatically. Manually open this URL in browser and login:")
 	fmt.Println(LOGIN_URL)
 
-	serverDone := &sync.WaitGroup{}
-	serverDone.Add(1)
-	start(context.Background(), serverDone)
 	serverDone.Wait()
 }
 
-func start(ctx context.Context, wg *sync.WaitGroup) {
-	srv := &http.Server{Addr: ":9090"}
+func start(wg *sync.WaitGroup) {
+	srv := &http.Server{
+		Addr:         fmt.Sprintf(":%d", port),
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
 	http.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
-		select {
-		case <-ctxShutdown.Done():
-			fmt.Println("Context Shuting down ...")
-			return
-		default:
-		}
 		code := r.URL.Query().Get("code")
 		if code != "" {
 			Client.GetAccessToken(code)
 			fmt.Println("Login success.")
-			_, err := fmt.Fprintln(w, "Login success. You can close this page now.")
+			w.Header().Set("Connection", "close")
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, err := fmt.Fprint(w, successHTML())
 			if err != nil {
-				slog.Error("Error writing response", "Error", err)
+				slog.Error("Error writing response", "error", err)
 			}
-			// shutdown
-			err = srv.Shutdown(ctx)
-			if err != nil {
-				slog.Info("server.Shutdown:", "Error", err)
-			}
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := srv.Shutdown(ctx); err != nil {
+					slog.Error("Server Shutdown", "error", err)
+				}
+			}()
 		} else {
-			_, err := fmt.Fprintln(w, "Hi") // Server HTML page to fetch token and return to server at /auth
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, err := fmt.Fprintln(w, "Hi")
 			if err != nil {
-				slog.Error("Error writing response", "Error", err)
+				slog.Error("Error writing response", "error", err)
 			}
-
 		}
 	})
 
 	go func() {
 		defer wg.Done()
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			slog.Error(fmt.Sprintf("ListenAndServe(): %v", err))
+		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("ListenAndServe", "error", err)
 		}
 	}()
 }
@@ -107,6 +114,50 @@ func openBrowser(url string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// successHTML returns the HTML for the success page
+func successHTML() string {
+	return `<!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Successful</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+        }
+        h1 {
+            color: #F09199;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 18px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Authentication Successful</h1>
+        <p>Login successful. You can close this page now.</p>
+    </div>
+</body>
+</html>`
 }
 
 func init() {

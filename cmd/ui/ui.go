@@ -5,6 +5,7 @@ import (
 
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd"
+	"github.com/iucario/bangumi-go/cmd/auth"
 	"github.com/spf13/cobra"
 )
 
@@ -15,8 +16,14 @@ var uiCmd = &cobra.Command{
 		authClient := api.NewAuthClientWithConfig()
 		user := api.NewUser(authClient)
 		if user == nil {
-			fmt.Println("Please login. Run `bgm auth login`")
-			return
+			auth.BrowserLogin()
+			// Try again after login
+			authClient = api.NewAuthClientWithConfig()
+			user = api.NewUser(authClient)
+			if user == nil {
+				fmt.Println("Login failed. Please try again.")
+				return
+			}
 		}
 
 		app := NewApp(user)
