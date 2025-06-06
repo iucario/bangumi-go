@@ -25,6 +25,10 @@ type SubjectPage struct {
 
 func NewSubjectPage(a *App, ID int) *SubjectPage {
 	sbj := subject.GetSubjectInfo(a.User.Client, ID)
+	if sbj == nil {
+		slog.Error("Failed to fetch subject info", "ID", ID)
+		return nil
+	}
 
 	// Get user collection data for this subject
 	var collection *api.UserSubjectCollection
@@ -65,6 +69,7 @@ func (s *SubjectPage) render() {
 	s.SetBorderColor(tcell.ColorGray)
 	top := tview.NewTextView().SetTextAlign(tview.AlignCenter)
 	top.SetText(fmt.Sprintf("%s %s", s.Subject.GetName(), api.SubjectTypeRev[int(s.Subject.Type)]))
+	top.SetTextColor(ui.Styles.TitleColor)
 
 	text := s.createLeftText()
 	rightText := s.createRightText()
