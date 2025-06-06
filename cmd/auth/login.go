@@ -70,7 +70,10 @@ func start(wg *sync.WaitGroup) {
 			fmt.Println("Login success.")
 			w.Header().Set("Connection", "close")
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			fmt.Fprint(w, successHTML())
+			_, err := fmt.Fprint(w, successHTML())
+			if err != nil {
+				slog.Error("Error writing response", "error", err)
+			}
 			go func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
@@ -80,7 +83,10 @@ func start(wg *sync.WaitGroup) {
 			}()
 		} else {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			fmt.Fprintln(w, "Hi")
+			_, err := fmt.Fprintln(w, "Hi")
+			if err != nil {
+				slog.Error("Error writing response", "error", err)
+			}
 		}
 	})
 
