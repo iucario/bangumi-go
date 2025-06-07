@@ -270,7 +270,7 @@ func renderTags(tags []api.Tag, wikiTags []string) string {
 	for _, tag := range tags {
 		text := fmt.Sprintf("%s+%d", tag.Name, tag.Count)
 		if _, ok := wiki[tag.Name]; ok {
-			text = fmt.Sprint(ui.TitleColor(text))
+			text = fmt.Sprint(ui.Cyan(text))
 		}
 		arr = append(arr, text)
 	}
