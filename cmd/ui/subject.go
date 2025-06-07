@@ -39,7 +39,7 @@ func NewSubjectPage(a *App, ID int) *SubjectPage {
 		} else {
 			collection = &api.UserSubjectCollection{
 				SubjectType: sbj.Type,
-				Subject:     sbj.ToSlimSubject(),
+				Subject:     sbj.SlimSubject,
 				Type:        0,
 				SubjectID:   sbj.ID,
 			}

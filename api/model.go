@@ -127,30 +127,24 @@ func (c *UserSubjectCollection) GetTags() string {
 }
 
 func (c *UserSubjectCollection) GetAllTags() string {
-	return TagNames(c.Subject.Tags)
+	return tagNames(c.Subject.Tags)
 }
 
 type Subject struct {
+	SlimSubject
 	Images          map[string]string `json:"images"`
-	Name            string            `json:"name"`
-	NameCn          string            `json:"name_cn"`
 	Summary         string            `json:"summary"`
 	Nsfw            bool              `json:"nsfw"`
+	Series          bool              `json:"series"` // Is the main subject for books or not
 	Locked          bool              `json:"locked"`
-	Tags            []Tag             `json:"tags"`
 	Score           float64           `json:"score"`
-	Type            uint32            `json:"type"`
-	ID              uint32            `json:"id"`
-	Eps             uint32            `json:"eps"`
-	Volumes         uint32            `json:"volumes"`
-	CollectionTotal uint32            `json:"collection_total"`
+	TotalEps        uint32            `json:"total_episodes"`
 	Rank            uint32            `json:"rank"`
 	Rating          Rating            `json:"rating"`
 	CollectionCount CollectionCount   `json:"collection"`
 	WikiTags        []string          `json:"meta_tags"` // tags from wiki users, not general user tags
 	Platform        string            `json:"platform"`  // TV, Web, DLC, etc.
 	// Optional fields
-	Date    string           `json:"date"`    // can be empty
 	InfoBox []map[string]any `json:"infobox"` // A list of ordered maps for additional information
 }
 
@@ -168,6 +162,17 @@ type SlimSubject struct {
 	CollectionTotal uint32            `json:"collection_total"`
 	Rank            uint32            `json:"rank"`
 	Date            string            `json:"date"` // can be empty
+}
+
+func (s *SlimSubject) GetName() string {
+	if s.NameCn != "" {
+		return s.NameCn
+	}
+	return s.Name
+}
+
+func (s *SlimSubject) GetAllTags() string {
+	return tagNames(s.Tags)
 }
 
 type UserEpisodeCollections struct {
@@ -253,37 +258,8 @@ type Weekday struct {
 	JA string `json:"ja"`
 }
 
-func (s *Subject) GetName() string {
-	if s.NameCn != "" {
-		return s.NameCn
-	}
-	return s.Name
-}
-
-func (s *Subject) ToSlimSubject() SlimSubject {
-	return SlimSubject{
-		ID:              s.ID,
-		Type:            s.Type,
-		Name:            s.Name,
-		NameCn:          s.NameCn,
-		Images:          s.Images,
-		ShortSummary:    s.Summary,
-		Tags:            s.Tags,
-		Score:           s.Score,
-		Eps:             s.Eps,
-		Volumes:         s.Volumes,
-		CollectionTotal: s.CollectionTotal,
-		Rank:            s.Rank,
-		Date:            s.Date,
-	}
-}
-
-func (s *Subject) GetAllTags() string {
-	return TagNames(s.Tags)
-}
-
-// TagNames returns all users' tags as a space-separated string.
-func TagNames(tags []Tag) string {
+// tagNames returns all users' tags as a space-separated string.
+func tagNames(tags []Tag) string {
 	if len(tags) == 0 {
 		return ""
 	}
