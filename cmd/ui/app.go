@@ -86,7 +86,12 @@ func (a *App) GoBack() {
 // OpenSubjectPage pushes the current page to history and opens a subject page
 func (a *App) OpenSubjectPage(subjectID int, prevPage string) {
 	a.PushPage(prevPage)
-	a.Pages.AddPage("subject", NewSubjectPage(a, subjectID), true, false)
+	page := NewSubjectPage(a, subjectID)
+	if page == nil {
+		slog.Error("opening subject page", "ID", subjectID)
+		return
+	}
+	a.Pages.AddPage("subject", page, true, false)
 	a.Goto("subject")
 }
 

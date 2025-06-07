@@ -8,6 +8,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd/subject"
+	"github.com/iucario/bangumi-go/internal/task"
 	"github.com/iucario/bangumi-go/internal/ui"
 	"github.com/rivo/tview"
 )
@@ -17,6 +18,7 @@ type SubjectPage struct {
 	client       api.Client
 	app          *App
 	Subject      *api.Subject
+	Episodes     *api.Episodes
 	leftContent  *tview.TextView
 	rightContent *tview.TextView
 	// Optional
@@ -24,21 +26,56 @@ type SubjectPage struct {
 }
 
 func NewSubjectPage(a *App, ID int) *SubjectPage {
-	sbj := subject.GetSubjectInfo(a.User.Client, ID)
+	// Get data concurrently
+	tasks := []task.Task{
+		{
+			ID: "subject",
+			Do: func() (any, error) {
+				return subject.GetSubjectInfo(a.User.Client, ID)
+			},
+		},
+		{
+			ID: "collection",
+			Do: func() (any, error) {
+				return subject.GetUserSubjectCollection(a.User.Client, a.User.Username, ID)
+			},
+		},
+		{
+			ID: "episodes",
+			Do: func() (any, error) {
+				return subject.GetEpisodes(a.User.Client.HTTPClient, ID, 0, 100)
+			},
+		},
+	}
+	res := task.Run(tasks)
+
+	// TODO: fix this ugly block
+	sbjRes, ok := res["subject"]
+	if !ok || sbjRes.Error != nil || sbjRes.Data == nil {
+		slog.Error("Failed to fetch subject info", "ID", ID, "Error", sbjRes.Error)
+		return nil
+	}
+	sbj := sbjRes.Data.(*api.Subject)
+
+	episodesRes, ok := res["episodes"]
+	if !ok || episodesRes.Error != nil || episodesRes.Data == nil {
+		slog.Error("Failed to fetch episodes", "Error", episodesRes.Error)
+	}
+	episodes := episodesRes.Data.(*api.Episodes)
 
 	// Get user collection data for this subject
-	var collection *api.UserSubjectCollection
+	collection := &api.UserSubjectCollection{
+		SubjectType: sbj.Type,
+		Subject:     sbj.SlimSubject,
+		Type:        0,
+		SubjectID:   sbj.ID,
+	}
 	if a.User != nil && a.User.Client != nil && a.User.Username != "" {
-		c, err := subject.GetUserSubjectCollection(a.User.Client, a.User.Username, ID)
-		if err == nil && c.Type != 0 {
+		c, ok := res["collection"].Data.(api.UserSubjectCollection)
+		if ok && c.Type != 0 {
 			collection = &c
 		} else {
-			collection = &api.UserSubjectCollection{
-				SubjectType: sbj.Type,
-				Subject:     sbj.ToSlimSubject(),
-				Type:        uint32(api.CollectionType[api.Watching]),
-				SubjectID:   sbj.ID,
-			}
+			slog.Error("Failed to fetch collection", "Error", res["collection"].Error)
 		}
 	}
 
@@ -46,6 +83,7 @@ func NewSubjectPage(a *App, ID int) *SubjectPage {
 		Grid:       tview.NewGrid(),
 		app:        a,
 		Subject:    sbj,
+		Episodes:   episodes,
 		client:     a.User.Client,
 		Collection: collection,
 	}
@@ -65,6 +103,7 @@ func (s *SubjectPage) render() {
 	s.SetBorderColor(tcell.ColorGray)
 	top := tview.NewTextView().SetTextAlign(tview.AlignCenter)
 	top.SetText(fmt.Sprintf("%s %s", s.Subject.GetName(), api.SubjectTypeRev[int(s.Subject.Type)]))
+	top.SetTextColor(ui.Styles.TitleColor)
 
 	text := s.createLeftText()
 	rightText := s.createRightText()
@@ -75,19 +114,16 @@ func (s *SubjectPage) render() {
 	// Initially, leftContent is focused, so show its border
 	s.leftContent.SetBorder(true)
 	s.rightContent.SetBorder(true)
-	// Set initial border color (unfocused)
-	s.leftContent.SetBorderColor(tcell.ColorGray)
-	s.rightContent.SetBorderColor(tcell.ColorGray)
 
 	// Change border color on focus/blur
 	s.leftContent.SetFocusFunc(func() {
-		s.leftContent.SetBorderColor(ui.Styles.TertiaryTextColor) // Focused color
+		s.leftContent.SetBorderColor(ui.Styles.TitleColor) // Focused color
 	})
 	s.leftContent.SetBlurFunc(func() {
 		s.leftContent.SetBorderColor(tcell.ColorGray) // Unfocused color
 	})
 	s.rightContent.SetFocusFunc(func() {
-		s.rightContent.SetBorderColor(ui.Styles.TertiaryTextColor)
+		s.rightContent.SetBorderColor(ui.Styles.TitleColor)
 	})
 	s.rightContent.SetBlurFunc(func() {
 		s.rightContent.SetBorderColor(tcell.ColorGray)
@@ -103,7 +139,7 @@ func (s *SubjectPage) render() {
 
 func (s *SubjectPage) Refresh() {
 	slog.Debug("subject refresh")
-	s.Subject = subject.GetSubjectInfo(s.client, int(s.Subject.ID))
+	s.Subject, _ = subject.GetSubjectInfo(s.client, int(s.Subject.ID))
 	if s.app.User != nil && s.app.User.Client != nil && s.app.User.Username != "" {
 		c, err := subject.GetUserSubjectCollection(s.app.User.Client, s.app.User.Username, int(s.Subject.ID))
 		if err == nil && c.Type != 0 {
@@ -177,31 +213,31 @@ func (s *SubjectPage) createLeftText() string {
 	if s.Subject.Eps == 0 {
 		totalEps = "未知"
 	}
-	text := fmt.Sprintf("[yellow]%s[-]\n%s\n", s.Subject.NameCn, s.Subject.Name)
+	text := fmt.Sprintf("%s\n%s\n", ui.SecondaryText(s.Subject.NameCn), s.Subject.Name)
 	text += fmt.Sprintf("https://bgm.tv/subject/%d\n", s.Subject.ID)
 	if s.Subject.Nsfw {
-		text += "[red]NSFW[-]\n"
+		text += ui.GraphicsColor("NSFW") + "\n"
 	}
-	text += fmt.Sprintf("[yellow]集数[-]: %s\n", totalEps)
+	text += fmt.Sprintf("集数: %s\n", totalEps)
 	if s.Subject.Volumes > 0 {
-		text += fmt.Sprintf("[yellow]卷数:[-] %d\n", s.Subject.Volumes)
+		text += fmt.Sprintf("卷数: %d\n", s.Subject.Volumes)
 	}
-	text += fmt.Sprintf("[yellow]评分[-]: %.1f\n", s.Subject.Rating.Score)
-	text += fmt.Sprintf("[yellow]排名[-]: %d\n", s.Subject.Rating.Rank)
-	text += fmt.Sprintf("[yellow]评分人数[-]: %d\n", s.Subject.Rating.Total)
-	text += "\n收藏人数\n"
-	text += fmt.Sprintf("[yellow]在看[-]: %d\n", s.Subject.CollectionCount.Watching)
-	text += fmt.Sprintf("[yellow]想看[-]: %d\n", s.Subject.CollectionCount.Wish)
-	text += fmt.Sprintf("[yellow]看过[-]: %d\n", s.Subject.CollectionCount.Done)
-	text += fmt.Sprintf("[yellow]搁置[-]: %d\n", s.Subject.CollectionCount.OnHold)
-	text += fmt.Sprintf("[yellow]抛弃[-]: %d\n", s.Subject.CollectionCount.Dropped)
+	text += fmt.Sprintf("评分: %.1f\n", s.Subject.Rating.Score)
+	text += fmt.Sprintf("排名: %d\n", s.Subject.Rating.Rank)
+	text += fmt.Sprintf("评分人数: %d\n", s.Subject.Rating.Total)
+	text += ui.SecondaryText("\n收藏人数\n")
+	text += fmt.Sprintf("在看: %d\n", s.Subject.CollectionCount.Watching)
+	text += fmt.Sprintf("想看: %d\n", s.Subject.CollectionCount.Wish)
+	text += fmt.Sprintf("看过: %d\n", s.Subject.CollectionCount.Done)
+	text += fmt.Sprintf("搁置: %d\n", s.Subject.CollectionCount.OnHold)
+	text += fmt.Sprintf("抛弃: %d\n", s.Subject.CollectionCount.Dropped)
 	text += "\n"
-	text += fmt.Sprintf("[yellow]放送日期[-]: %s\n", s.Subject.Date)
+	text += fmt.Sprintf("放送日期: %s\n", ui.SecondaryText(s.Subject.Date))
 
 	// Show user collection info if available
 	if s.Collection != nil && s.Collection.Type != 0 {
-		text += "\n[yellow]你的收藏信息[-]:\n"
-		text += fmt.Sprintf("状态: %s\n", api.CollectionTypeRev[int(s.Collection.Type)])
+		text += ui.SecondaryText("\n你的收藏信息:\n")
+		text += fmt.Sprintf("状态: %s\n", s.Collection.GetStatus())
 		text += fmt.Sprintf("评分: %d\n", s.Collection.Rate)
 		text += fmt.Sprintf("短评: %s\n", s.Collection.Comment)
 		text += fmt.Sprintf("标签: %s\n", strings.Join(s.Collection.Tags, ", "))
@@ -216,9 +252,11 @@ func (s *SubjectPage) createLeftText() string {
 
 func (s *SubjectPage) createRightText() string {
 	text := ""
-	text += fmt.Sprintf("[yellow]简介[-]:\n%s\n", s.Subject.Summary)
+	text += fmt.Sprintf("%s\n", s.Subject.Summary)
 	text += "\n\n"
-	text += fmt.Sprintf("[yellow]标签[-]: %s\n", renderTags(s.Subject.Tags, s.Subject.WikiTags))
+	text += fmt.Sprintf("标签: %s\n", renderTags(s.Subject.Tags, s.Subject.WikiTags))
+	text += "\n\n"
+	text += fmt.Sprintf("剧集:\n%s\n", renderEpisodes(s.Episodes))
 	return text
 }
 
@@ -230,11 +268,33 @@ func renderTags(tags []api.Tag, wikiTags []string) string {
 		wiki[tag] = true
 	}
 	for _, tag := range tags {
-		text := fmt.Sprintf("%s•%d", tag.Name, tag.Count)
+		text := fmt.Sprintf("%s+%d", tag.Name, tag.Count)
 		if _, ok := wiki[tag.Name]; ok {
-			text = fmt.Sprintf("[blue]%s[-]", text)
+			text = fmt.Sprint(ui.Cyan(text))
 		}
 		arr = append(arr, text)
 	}
 	return "| " + strings.Join(arr, " | ") + " |"
+}
+
+func renderEpisodes(episodes *api.Episodes) string {
+	if episodes == nil {
+		return "NULL"
+	}
+	text := ""
+	latestEp := episodes.Latest()
+	slog.Debug("latest episode", "ep", latestEp)
+	for _, ep := range episodes.Data {
+		if latestEp != nil && ep.Sort < latestEp.Sort {
+			// On aired
+			text += fmt.Sprintf("%d. %s\n", ep.Sort, ep.GetName())
+		} else if latestEp != nil && ep.Sort == latestEp.Sort {
+			// Not yet on aired
+			text += fmt.Sprintf("%d. %s\n", ep.Sort, ui.SecondaryText(ep.GetName()))
+		} else {
+			// Not yet on aired
+			text += fmt.Sprintf("%d. %s\n", ep.Sort, ui.GraphicsColor(ep.GetName()))
+		}
+	}
+	return text
 }

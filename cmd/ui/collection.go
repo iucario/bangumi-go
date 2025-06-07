@@ -40,6 +40,10 @@ func NewCollectionPage(a *App, collectionStatus api.CollectionStatus) *Collectio
 		slog.Error("Failed to fetch collections", "Error", err)
 		return nil
 	}
+	currentSubject := 0
+	if len(userCollections.Data) > 0 {
+		currentSubject = int(userCollections.Data[0].Subject.ID)
+	}
 	collectionPage := &CollectionPage{
 		Flex:             tview.NewFlex(),
 		app:              a,
@@ -49,7 +53,7 @@ func NewCollectionPage(a *App, collectionStatus api.CollectionStatus) *Collectio
 		Total:            int(userCollections.Total),
 		ListView:         nil,
 		DetailView:       nil,
-		CurrentSubject:   int(userCollections.Data[0].Subject.ID),
+		CurrentSubject:   currentSubject,
 	}
 	collectionPage.render()
 	collectionPage.setKeyBindings()
@@ -82,8 +86,8 @@ func (c *CollectionPage) render() {
 	// Open Subject page on click(enter/space)
 	c.ListView.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
 		if index >= 0 && index < len(c.Collections) {
-			id := int(c.Collections[index].Subject.ID)
-			c.app.OpenSubjectPage(id, c.Name)
+			subID := int(c.Collections[index].Subject.ID)
+			c.app.OpenSubjectPage(subID, c.Name)
 		}
 	})
 
@@ -108,7 +112,11 @@ func (c *CollectionPage) Refresh() {
 
 	c.Collections = collections.Data
 	c.Total = int(collections.Total)
-	c.CurrentSubject = int(collections.Data[0].Subject.ID)
+	if len(collections.Data) > 0 {
+		c.CurrentSubject = int(collections.Data[0].Subject.ID)
+	} else {
+		c.CurrentSubject = 0
+	}
 	c.renderListItems()
 	c.renderDetail()
 }
@@ -152,7 +160,6 @@ func (c *CollectionPage) LoadNextPage() {
 }
 
 func (c *CollectionPage) setKeyBindings() {
-	collections := c.Collections
 	listView := c.ListView
 	detailView := c.DetailView
 	c.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -169,12 +176,16 @@ func (c *CollectionPage) setKeyBindings() {
 				c.app.SetFocus(listView)
 			case 'e':
 				slog.Debug("collect")
-				if len(collections) == 0 {
+				if len(c.Collections) == 0 {
 					slog.Warn("No collection to edit")
 					return event
 				}
 				index := listView.GetCurrentItem()
-				modal := NewEditModal(c.app, collections[index], c.onSave)
+				if index < 0 || index >= len(c.Collections) {
+					slog.Warn("Invalid collection index for edit")
+					return event
+				}
+				modal := NewEditModal(c.app, c.Collections[index], c.onSave)
 				c.app.Pages.AddPage("collect", modal, true, true)
 				c.app.SetFocus(modal)
 			case 'R':
@@ -270,7 +281,12 @@ func createCollectionText(c *api.UserSubjectCollection) string {
 	if c.Subject.Eps == 0 {
 		totalEp = "Unknown"
 	}
-	text := fmt.Sprintf("%s\n%s\n", ui.TertiaryText(c.Subject.NameCn), c.Subject.Name)
+	text := ""
+	if c.Subject.NameCn == "" {
+		text += fmt.Sprintf("%s\n", ui.TertiaryText(c.Subject.Name))
+	} else {
+		text += fmt.Sprintf("%s\n%s\n", ui.TertiaryText(c.Subject.NameCn), c.Subject.Name)
+	}
 	text += fmt.Sprintf("%s\n\n", api.SubjectTypeRev[int(c.Subject.Type)])
 	text += fmt.Sprintf("%s...\n", c.Subject.ShortSummary)
 	text += fmt.Sprintf("\nYour Tags: %s\n", ui.TertiaryText(c.GetTags()))
