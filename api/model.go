@@ -175,6 +175,7 @@ func (s *SlimSubject) GetAllTags() string {
 	return tagNames(s.Tags)
 }
 
+// Returned type of /v0/users/-/collections/{subject_id}/episodes
 type UserEpisodeCollections struct {
 	Total  int                     `json:"total"`
 	Limit  int                     `json:"limit"`
@@ -182,24 +183,74 @@ type UserEpisodeCollections struct {
 	Data   []UserEpisodeCollection `json:"data"`
 }
 
+func (e *UserEpisodeCollections) Status() {
+	panic("Not impelemented")
+}
+
+// User watched episode. The latest.
+func (e *UserEpisodeCollections) Latest() *Episode {
+	doneType := EpisodeCollectionType["done"]
+	for i := len(e.Data); i >= 0; i -= 1 {
+		userEpisode := e.Data[i]
+		if userEpisode.Type != doneType {
+			return &userEpisode.Episode
+		}
+	}
+	return nil
+}
+
 type UserEpisodeCollection struct {
 	Episode Episode `json:"episode"`
 	Type    int     `json:"type"`
 }
 
+// Subject's episode information. Not users'.
+type Episodes struct {
+	Total  int       `json:"total"`
+	Limit  int       `json:"limit"`
+	Offset int       `json:"offset"`
+	Data   []Episode `json:"data"`
+}
+
+func (e *Episodes) Status() {
+	panic("Not impelemented")
+}
+
+// Latest on aired episode
+func (e *Episodes) Latest() *Episode {
+	today := time.Now()
+	for i := len(e.Data) - 1; i >= 0; i -= 1 {
+		parsed, err := parseDate(e.Data[i].Airdate)
+		if err != nil {
+			return nil
+		}
+		if parsed.Before(today) {
+			return &e.Data[i]
+		}
+	}
+	return nil
+}
+
 type Episode struct {
-	Airdate     string  `json:"airdate"`
-	Name        string  `json:"name"`
-	NameCn      string  `json:"name_cn"`
-	Duration    string  `json:"duration"`
-	Description string  `json:"description"`
-	Ep          float32 `json:"ep"`
-	SubjectId   int     `json:"subject_id"`
-	Sort        float32 `json:"sort"`
-	Comment     uint32  `json:"comment"`
-	Id          int     `json:"id"`
-	Type        int     `json:"type"`
-	Disc        uint8   `json:"disc"`
+	Airdate     string `json:"airdate"`
+	Name        string `json:"name"`
+	NameCn      string `json:"name_cn"`
+	Duration    string `json:"duration"`
+	Description string `json:"description"`
+	Ep          int    `json:"ep"`   // Episode number of current season
+	Sort        int    `json:"sort"` // Episode number of all seasons
+	SubjectId   int    `json:"subject_id"`
+	Comment     uint32 `json:"comment"`
+	Id          int    `json:"id"`
+	Type        int    `json:"type"`
+	Disc        uint8  `json:"disc"`
+}
+
+func (e *Episode) GetName() string {
+	if e.NameCn != "" {
+		return e.NameCn
+	}
+	return e.Name
 }
 
 type Tag struct {
@@ -268,4 +319,14 @@ func tagNames(tags []Tag) string {
 		names = append(names, tag.Name)
 	}
 	return strings.Join(names, " ")
+}
+
+func parseDate(dateString string) (time.Time, error) {
+	layout := "2006-01-02"
+
+	parsedTime, err := time.Parse(layout, dateString)
+	if err != nil {
+		return time.Now(), err
+	}
+	return parsedTime, nil
 }

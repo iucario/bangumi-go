@@ -35,7 +35,7 @@ var statusCmd = &cobra.Command{
 		collection, _ := GetUserSubjectCollection(authClient, userInfo.Username, subjectId)
 
 		modifyCollection(authClient, subjectId, api.CollectionStatus(status), tags, rate, comment, private, collection)
-		subject := GetSubjectInfo(authClient, subjectId)
+		subject, _ := GetSubjectInfo(authClient, subjectId)
 		fmt.Printf("%d\n%s\n%s\n", subject.ID, subject.NameCn, subject.Name)
 
 		printSubjectStatus(authClient, subjectId, collection)

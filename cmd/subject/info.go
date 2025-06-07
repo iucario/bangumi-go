@@ -22,8 +22,12 @@ var infoCmd = &cobra.Command{
 			return
 		}
 		authClient := api.NewAuthClientWithConfig()
-		subject := GetSubjectInfo(authClient, subjectId)
-		fmt.Printf("%d\n%s\n%s\n%s\n", subject.ID, subject.NameCn, subject.Name, subject.Summary)
+		subject, err := GetSubjectInfo(authClient, subjectId)
+		if err != nil {
+			fmt.Println("error", err)
+		} else {
+			fmt.Printf("%d\n%s\n%s\n%s\n", subject.ID, subject.NameCn, subject.Name, subject.Summary)
+		}
 	},
 }
 
@@ -31,19 +35,17 @@ func init() {
 	subCmd.AddCommand(infoCmd)
 }
 
-func GetSubjectInfo(c api.Client, subjectId int) *api.Subject {
+func GetSubjectInfo(c api.Client, subjectId int) (*api.Subject, error) {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/subjects/%d", subjectId)
 
 	b, err := c.Get(url)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Failed to get subject info: %v", err))
-		return nil
+		return nil, err
 	}
 	subject := api.Subject{}
 	err = json.Unmarshal(b, &subject)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Failed to unmarshal subject info: %v", err))
-		return nil
+		return nil, err
 	}
-	return &subject
+	return &subject, nil
 }
