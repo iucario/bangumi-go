@@ -36,7 +36,7 @@ var Styles = tview.Theme{
 	ContrastBackgroundColor:     tcell.NewHexColor(color["blue"]),
 	MoreContrastBackgroundColor: tcell.NewHexColor(color["purple"]),
 	BorderColor:                 tcell.ColorGrey,
-	TitleColor:                  tcell.NewHexColor(color["cyan"]),
+	TitleColor:                  tcell.NewHexColor(color["purple"]),
 	GraphicsColor:               tcell.NewHexColor(color["red"]),
 	PrimaryTextColor:            tcell.NewHexColor(color["white"]),
 	SecondaryTextColor:          tcell.NewHexColor(color["yellow"]),

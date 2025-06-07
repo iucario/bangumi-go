@@ -6,6 +6,8 @@ It is under active development and features will change.
 
 ## Commands
 
+- `ui` or empty
+  Start terminal UI
 - `auth`
   Auth commands
 - `completion`
@@ -20,18 +22,19 @@ It is under active development and features will change.
   Print the version number of bgm-cli
 - `cal`
   Show calendar (airing animes)
-- `ui`
-  Start terminal UI
 
 ## Screenshots
 
 Calendar
 ![calendar](./image/cal.png)
 
+Sbject
 ![subject](./image/subject.png)
 
+Collection
 ![collection](./image/collection.png)
 
+Edit collection
 ![collect](./image/collect.png)
 
 ## Development
@@ -67,19 +70,24 @@ UI
    mv bgm-<platform>-<arch> bgm
    ```
 
-3. Move it to a directory in your PATH (e.g., `/usr/local/bin`) to make it easier to use:
+3. Move it to a directory in your PATH (e.g., `~/.local/bin/`) to make it easier to use:
 
    ```sh
-   mv bgm /usr/local/bin/
+   mv bgm ~/.local/bin/
    ```
 
 4. Run the binary:
 
    ```sh
-   bgm --help
+   bgm
    ```
 
 For Windows, double-click the `.exe` file or run it from the command prompt.
+
+### Tip
+
+If you are not sure about CJK font and have not configured your terminal for Chinese.
+It is recommended to use [Maple Mono](https://github.com/subframe7536/maple-font?tab=readme-ov-file#download) for better displaying of Chinese and Japanese.
 
 ## Installation with Go
 
