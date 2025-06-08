@@ -71,6 +71,10 @@ func (a *App) Goto(page string) {
 		slog.Error("Invalid page name", "Page", page)
 		return
 	}
+	// Should push subject page to history if switching from there
+	if a.currentPage == "subject" {
+		a.PushPage(a.currentPage)
+	}
 	a.Pages.SwitchToPage(page)
 	a.currentPage = page
 }
