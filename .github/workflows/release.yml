@@ -25,11 +25,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get latest tag from commit
+      - name: Fetch tags
+        run: git fetch --tags
+
+      - name: Get latest tag
         id: get_tag
         run: |
-          tag=$(git describe --tags --abbrev=0)
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          tag=$(git describe --tags --abbrev=0 || echo 'v0.0.0')
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+        shell: bash
 
       - name: Download All Artifacts
         uses: actions/download-artifact@v4
