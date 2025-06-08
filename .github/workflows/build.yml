@@ -9,6 +9,20 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Build and release'
+        required: true
+        type: boolean
+      prerelease:
+        description: 'Is pre-release'
+        required: true
+        type: boolean
+      draft:
+        description: 'Is draft'
+        required: true
+        type: boolean
 
 jobs:
   golangci:
@@ -83,3 +97,42 @@ jobs:
           name: bgm-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
           path: bgm-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
           retention-days: 7
+
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch tags
+        run: git fetch --tags
+
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          tag=$(git describe --tags --abbrev=0 || echo 'v0.0.0')
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: bgm-*
+          merge-multiple: true
+      - run: ls -R release-assets
+
+      - name: List downloaded files
+        run: ls -R release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_tag.outputs.tag }}
+          name: Release ${{ steps.get_tag.outputs.tag }}
+          draft: ${{ github.event.inputs.draft }}
+          prerelease: ${{ github.event.inputs.prerelease }}
+          files: release-assets/**/*
