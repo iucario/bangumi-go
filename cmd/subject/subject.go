@@ -42,18 +42,34 @@ func GetUserSubjectCollection(c *api.AuthClient, username string, subjectId int)
 	return userSubjectCollection, err
 }
 
+// Get user's episode info
 func GetUserEpisodeCollections(c *api.AuthClient, subjectId, offset, limit, episode_type int) (api.UserEpisodeCollections, error) {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d/episodes", subjectId)
 	b, err := c.Get(url)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Failed to get user episode collection: %v\n", err))
+		slog.Error("getting user episode collection", "Error", err)
 	}
 	userEpisodeCollections := api.UserEpisodeCollections{}
 	err = json.Unmarshal(b, &userEpisodeCollections)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Failed to unmarshal user episode collections: %v\n", err))
+		slog.Error("unmarshalling user episode collection", "Error", err)
 	}
 	return userEpisodeCollections, err
+}
+
+// Get subject's episodes info, not user's
+func GetEpisodes(c *api.HTTPClient, subjectID, offest, limit int) (*api.Episodes, error) {
+	url := fmt.Sprintf("https://api.bgm.tv/v0/episodes?subject_id=%d&offset=%d&limit=%d", subjectID, offest, limit)
+	b, err := c.Get(url)
+	if err != nil {
+		slog.Error("getting episodes", "Error", err)
+	}
+	episodes := api.Episodes{}
+	err = json.Unmarshal(b, &episodes)
+	if err != nil {
+		slog.Error("unmarshalling episodes", "Error", err)
+	}
+	return &episodes, err
 }
 
 // status: wish, done, watch, onhold, dropped
@@ -91,9 +107,12 @@ func PostCollection(c *api.AuthClient, subjectId int, status api.CollectionStatu
 func PutEpisode(c *api.AuthClient, episodeId int, status string) error {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/-/episodes/%d", episodeId)
 	typeInt := api.EpisodeCollectionType[status]
-	jsonBytes := []byte(fmt.Sprintf(`{
-		"type": %d}
-	`, typeInt))
+	data := struct {
+		Type int `json:"type"`
+	}{
+		Type: typeInt,
+	}
+	jsonBytes, _ := json.Marshal(data)
 	_, err := c.Put(url, jsonBytes)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to put episode: %v", err))

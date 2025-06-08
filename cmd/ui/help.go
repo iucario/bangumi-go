@@ -24,24 +24,24 @@ func NewHelpPage(app *App) *Help {
 	7: Go to search (not yet)
 	0: Go to user info (not yet)
 	?: Show this help
+
 	j/up: Move up
 	k/down: Move down
 	h/left: Switch to left
 	l/right: Switch to right
 	Q: Quit
+	q: Back
 
 	[Collection List]
 	e: Edit collection
-	shift + r: Refresh list
+	R: Refresh list
 	n: Load next page
 
+	[Subject Page]
+	e: Edit collection
+
 	[Calendar]
-	f: next page
-	b: previous page
-	d: next half page
-	u: previous half page
-	g: start
-	G: end
+	Enter: View subject
 	`
 	view := tview.NewTextView().SetText(text)
 

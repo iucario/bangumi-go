@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// Return -1 if not found
 func IndexOfString(arr []string, s string) int {
 	for i, v := range arr {
 		if v == s {
