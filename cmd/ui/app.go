@@ -4,11 +4,23 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/iucario/bangumi-go/api"
 	"github.com/rivo/tview"
 
 	"github.com/iucario/bangumi-go/internal/ui"
 )
+
+var PAGES = []string{
+	"watching",
+	"wish",
+	"done",
+	"stashed",
+	"dropped",
+	"calendar",
+	"help",
+	"subject",
+}
 
 // App controls the whole UI
 type App struct {
@@ -55,7 +67,10 @@ func (a *App) GoHome() {
 
 // Switch to a page and set the page to current page
 func (a *App) Goto(page string) {
-	// TODO: validation
+	if ok := slices.Contains(PAGES, page); !ok {
+		slog.Error("Invalid page name", "Page", page)
+		return
+	}
 	a.Pages.SwitchToPage(page)
 	a.currentPage = page
 }
@@ -116,7 +131,7 @@ func (a *App) handlePageSwitch(key rune) {
 		a.Goto("calendar")
 	case 'Q':
 		a.Stop()
-	case 'q':
+	case 'q', rune(tcell.KeyEsc):
 		a.GoBack()
 	case '?':
 		a.OpenHelpPage()

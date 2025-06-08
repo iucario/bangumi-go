@@ -216,19 +216,22 @@ func (e *Episodes) Status() {
 	panic("Not impelemented")
 }
 
-// Latest on aired episode
-func (e *Episodes) Latest() *Episode {
+// Latest on aired episode Sort
+func (e *Episodes) Latest() int {
 	today := time.Now()
+	// TODO: When the episode list is too long, the data may not contain the latest episode.
+
+	// FIXME: binary search
 	for i := len(e.Data) - 1; i >= 0; i -= 1 {
 		parsed, err := parseDate(e.Data[i].Airdate)
 		if err != nil {
-			return nil
+			return -1
 		}
 		if parsed.Before(today) {
-			return &e.Data[i]
+			return e.Data[i].Sort
 		}
 	}
-	return nil
+	return -1
 }
 
 type Episode struct {
@@ -241,7 +244,7 @@ type Episode struct {
 	Sort        int    `json:"sort"` // Episode number of all seasons
 	SubjectId   int    `json:"subject_id"`
 	Comment     uint32 `json:"comment"`
-	Id          int    `json:"id"`
+	ID          int    `json:"id"`
 	Type        int    `json:"type"`
 	Disc        uint8  `json:"disc"`
 }
@@ -249,8 +252,24 @@ type Episode struct {
 func (e *Episode) GetName() string {
 	if e.NameCn != "" {
 		return e.NameCn
+	} else if e.Name != "" {
+		return e.Name
 	}
-	return e.Name
+	return "N/A"
+}
+
+func (e *Episode) OnAirToday() bool {
+	today := time.Now()
+	today = today.Add(time.Hour * 9) // TO JST
+	todayStr := today.Format("2006-01-02")
+	if e.Airdate == todayStr {
+		return true
+	}
+	return false
+}
+
+func (e *Episode) GetAirTime() (time.Time, error) {
+	return parseDate(e.Airdate)
 }
 
 type Tag struct {
@@ -321,10 +340,9 @@ func tagNames(tags []Tag) string {
 	return strings.Join(names, " ")
 }
 
+// parseDate parses a date string in the format "2006-01-02"
 func parseDate(dateString string) (time.Time, error) {
-	layout := "2006-01-02"
-
-	parsedTime, err := time.Parse(layout, dateString)
+	parsedTime, err := time.Parse("2006-01-02", dateString)
 	if err != nil {
 		return time.Now(), err
 	}

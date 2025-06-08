@@ -62,13 +62,13 @@ func WatchNextEpisode(c *api.AuthClient, username string, subjectId int) {
 		slog.Error(fmt.Sprintf("%v\n", err))
 	}
 
-	err = PutEpisode(c, int(episode.Episode.Id), "done")
+	err = PutEpisode(c, int(episode.Episode.ID), "done")
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to mark episode as done: %v\n", err))
 		return
 	}
 	epName := episode.Episode.NameCn
-	slog.Info(fmt.Sprintf("Marked as done: %s episode %d. %s\n", subjectName, episode.Episode.Id, epName))
+	slog.Info(fmt.Sprintf("Marked as done: %s episode %d. %s\n", subjectName, episode.Episode.ID, epName))
 }
 
 // Mark 1 to n episodes as done, the rest as delete
@@ -86,9 +86,9 @@ func WatchToEpisode(c *api.AuthClient, subjectId int, episodeNum int) {
 	deleteList := make([]int, totalEps-validNum)
 	for i, userEpisode := range userEpisodeCollections.Data {
 		if i < validNum {
-			watchList[i] = int(userEpisode.Episode.Id)
+			watchList[i] = int(userEpisode.Episode.ID)
 		} else {
-			deleteList[i-validNum] = int(userEpisode.Episode.Id)
+			deleteList[i-validNum] = int(userEpisode.Episode.ID)
 		}
 	}
 

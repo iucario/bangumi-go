@@ -77,6 +77,10 @@ func White(text string) string {
 	return fmt.Sprintf("[#%06x]%s[-]", color["white"], text)
 }
 
+func Grey(text string) string {
+	return fmt.Sprintf("[%s]%s[-]", ColorToHex(tcell.ColorGrey), text)
+}
+
 func ColorToHex(color tcell.Color) string {
 	r, g, b := color.RGB()
 	return fmt.Sprintf("#%02X%02X%02X", r, g, b)

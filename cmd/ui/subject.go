@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/iucario/bangumi-go/api"
@@ -282,19 +283,32 @@ func renderEpisodes(episodes *api.Episodes) string {
 		return "NULL"
 	}
 	text := ""
-	latestEp := episodes.Latest()
-	slog.Debug("latest episode", "ep", latestEp)
+	today := time.Now()
 	for _, ep := range episodes.Data {
-		if latestEp != nil && ep.Sort < latestEp.Sort {
+		airTime, err := ep.GetAirTime()
+		if err != nil {
+			slog.Error("Failed to get air time for episode", "Error", err, "Episode", ep.ID)
+		}
+		diff := dateCompare(airTime, today)
+		if diff < 0 {
 			// On aired
-			text += fmt.Sprintf("%d. %s\n", ep.Sort, ep.GetName())
-		} else if latestEp != nil && ep.Sort == latestEp.Sort {
-			// Not yet on aired
-			text += fmt.Sprintf("%d. %s\n", ep.Sort, ui.SecondaryText(ep.GetName()))
+			text += fmt.Sprintf("%d. %s %s\n", ep.Sort, ep.GetName(), ui.Grey(ep.Airdate))
+		} else if diff == 0 {
+			// On airing today
+			text += fmt.Sprintf("%d. %s %s\n", ep.Sort, ui.SecondaryText(ep.GetName()), ui.Grey(ep.Airdate))
 		} else {
 			// Not yet on aired
-			text += fmt.Sprintf("%d. %s\n", ep.Sort, ui.GraphicsColor(ep.GetName()))
+			text += fmt.Sprintf("%d. %s %s\n", ep.Sort, ui.GraphicsColor(ep.GetName()), ui.Grey(ep.Airdate))
 		}
 	}
 	return text
+}
+
+// dateCompare returns the difference of a - b.
+// Not exact result, only for comparing dates.
+func dateCompare(a, b time.Time) int {
+	if a.Year() != b.Year() {
+		return a.Year() - b.Year()
+	}
+	return a.YearDay() - b.YearDay()
 }
