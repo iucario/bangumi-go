@@ -129,6 +129,7 @@ func (s *SubjectPage) render() {
 	s.rightContent.SetBlurFunc(func() {
 		s.rightContent.SetBorderColor(tcell.ColorGray)
 	})
+
 	footer := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
 	footer.SetText("e: 编辑  q: 返回  R: 刷新  ←/→: 移动  ↑/↓: 滚动  ?: Help")
 
@@ -154,7 +155,6 @@ func (s *SubjectPage) Refresh() {
 }
 
 func (s *SubjectPage) setKeyBindings() {
-	slog.Debug("setKeyBindings called")
 	s.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyLeft:

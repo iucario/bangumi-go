@@ -48,10 +48,10 @@ func (c *CalendarPage) render() {
 		SetText("放送日历").
 		SetTextAlign(tview.AlignCenter).
 		SetTextColor(ui.Styles.TitleColor)
-	table := tview.NewTable().SetSelectable(true, true)
-	c.table = table
-	table.SetBorder(false)
-	table.SetFixed(1, 0)
+	c.table = tview.NewTable().SetSelectable(true, true)
+	c.table.SetFixed(1, 0)
+	c.table.SetBorder(false)
+	c.table.Select(1, 0)
 
 	// Map weekday ID to column (0=Monday, 6=Sunday)
 	weekdayNames := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
@@ -82,7 +82,7 @@ func (c *CalendarPage) render() {
 			attr = tcell.AttrBold
 			bgcolor = ui.Styles.MoreContrastBackgroundColor
 		}
-		table.SetCell(0, col, tview.NewTableCell(name).
+		c.table.SetCell(0, col, tview.NewTableCell(name).
 			SetTextColor(color).
 			SetBackgroundColor(bgcolor).
 			SetSelectable(true).
@@ -129,15 +129,15 @@ func (c *CalendarPage) render() {
 					SetReference(anime.ID).
 					SetTextColor(ui.Styles.PrimaryTextColor).
 					SetAlign(tview.AlignLeft)
-				table.SetCell(row+1, col, cell)
+				c.table.SetCell(row+1, col, cell)
 			} else {
-				table.SetCell(row+1, col, tview.NewTableCell("").SetSelectable(false))
+				c.table.SetCell(row+1, col, tview.NewTableCell("").SetSelectable(false))
 			}
 		}
 	}
 
-	table.SetSelectedFunc(func(row, column int) {
-		cell := table.GetCell(row, column)
+	c.table.SetSelectedFunc(func(row, column int) {
+		cell := c.table.GetCell(row, column)
 		if cell == nil || cell.GetReference() == nil {
 			return
 		}
@@ -149,16 +149,27 @@ func (c *CalendarPage) render() {
 	})
 
 	footer := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
-	footer.SetText("Enter: 详情  ←/→ ↑/↓: 移动  ?: Help")
+	footer.SetText("Space/Enter: 详情  ←/→ ↑/↓: 移动  ?: Help")
 
 	c.Clear()
 	c.AddItem(header, 0, 0, 1, 1, 0, 0, false).
-		AddItem(table, 1, 0, 1, 1, 0, 0, true).
+		AddItem(c.table, 1, 0, 1, 1, 0, 0, true).
 		AddItem(footer, 2, 0, 1, 1, 0, 0, false)
 }
 
 func (c *CalendarPage) setKeyBindings() {
 	c.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyRune && event.Rune() == ' ' {
+			if cell := c.table.GetCell(c.table.GetSelection()); cell != nil && cell.GetReference() != nil {
+				if c.app != nil {
+					if subjectID, ok := cell.GetReference().(int); ok {
+						c.app.OpenSubjectPage(subjectID, "calendar")
+						return nil
+					}
+				}
+			}
+			return nil
+		}
 		switch event.Rune() {
 		default:
 			if c.app != nil {
