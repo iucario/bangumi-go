@@ -15,14 +15,17 @@ on:
         description: 'Build and release'
         required: true
         type: boolean
+        default: 'false'
       prerelease:
         description: 'Is pre-release'
         required: true
         type: boolean
+        default: 'true'
       draft:
         description: 'Is draft'
         required: true
         type: boolean
+        default: 'true'
 
 jobs:
   golangci:
@@ -102,6 +105,10 @@ jobs:
     name: Release
     needs: build
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.release == 'true' }}
+
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
