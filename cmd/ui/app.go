@@ -3,6 +3,7 @@ package tui
 import (
 	"log/slog"
 	"slices"
+	"sync"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/iucario/bangumi-go/api"
@@ -32,7 +33,6 @@ type App struct {
 }
 
 func NewApp(user *api.User) *App {
-	slog.Debug("New App", "User:", user)
 	// Override the default styles
 	tview.Styles = ui.Styles
 	return &App{
@@ -44,20 +44,47 @@ func NewApp(user *api.User) *App {
 
 // Run starts the TUI application with watching list and sets up the main pages.
 func (a *App) Run() error {
-	// Add separate pages for each collection type
-	a.Pages.AddPage("watching", NewCollectionPage(a, api.Watching), true, false)
-	a.Pages.AddPage("wish", NewCollectionPage(a, api.Wish), true, false)
-	a.Pages.AddPage("done", NewCollectionPage(a, api.Done), true, false)
-	a.Pages.AddPage("stashed", NewCollectionPage(a, api.OnHold), true, false)
-	a.Pages.AddPage("dropped", NewCollectionPage(a, api.Dropped), true, false)
-	a.Pages.AddPage("calendar", NewCalendarPage(a), true, false)
-	a.Pages.AddPage("help", NewHelpPage(a), true, false)
-	a.Goto("calendar")
+	var wg sync.WaitGroup
+	wg.Add(len(api.C_STATUS) + 2) // Collection pages + static pages
 
-	if err := a.Application.SetRoot(a.Pages, true).SetFocus(a.Pages).Run(); err != nil {
-		panic(err)
+	// Create all pages concurrently
+	collectionPages := make(map[string]*CollectionPage)
+	pageCreation := func(page ui.Page) {
+		defer wg.Done()
+		name := page.GetName()
+		a.Pages.AddPage(name, page, true, false)
+		if slices.Contains(api.C_STATUS, api.CollectionStatus(name)) {
+			if cp, ok := page.(*CollectionPage); ok {
+				collectionPages[name] = cp
+			} else {
+				slog.Error("Failed to cast page to CollectionPage", "Name", name)
+			}
+		}
 	}
-	return nil
+
+	// Create collection + other pages concurrently
+	for _, status := range api.C_STATUS {
+		go func(status api.CollectionStatus) {
+			page := NewCollectionPage(a, status)
+			pageCreation(page)
+		}(status)
+	}
+	go func() {
+		pageCreation(NewCalendarPage(a))
+	}()
+	go func() {
+		pageCreation(NewHelpPage(a))
+	}()
+
+	// Wait for all pages to be created
+	wg.Wait()
+
+	// Switch to the initial page
+	a.Goto("calendar")
+	a.PushPage("calendar")
+
+	// Start the application
+	return a.Application.SetRoot(a.Pages, true).SetFocus(a.Pages).Run()
 }
 
 // GoHome switchs app to page "watching"

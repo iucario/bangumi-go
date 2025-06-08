@@ -78,6 +78,20 @@ var EpisodeCollectionType map[string]int = map[string]int{
 	"dropped": 3,
 }
 
+var EpisodeType map[string]int = map[string]int{
+	"DEFAULT": 0,
+	"SP":      1,
+	"OP":      2,
+	"ED":      3,
+}
+
+var EpisodeTypeRev = map[int]string{
+	0: "DEFAULT",
+	1: "SP",
+	2: "OP",
+	3: "ED",
+}
+
 type UserCollections struct {
 	Total  uint32                  `json:"total"`
 	Limit  uint32                  `json:"limit"`

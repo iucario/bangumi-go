@@ -93,6 +93,10 @@ func NewSubjectPage(a *App, ID int) *SubjectPage {
 	return sub
 }
 
+func (s *SubjectPage) GetName() string {
+	return "subject"
+}
+
 // render displays the subject information and user collection data if available.
 // There is a header, footer and content in the middle.
 // Content has two parts, left and right content
@@ -167,9 +171,6 @@ func (s *SubjectPage) setKeyBindings() {
 				modal := NewEditModal(s.app, *s.Collection, s.onSave)
 				s.app.Pages.AddPage("collect", modal, true, true)
 				s.app.SetFocus(modal)
-			case 'q':
-				// Remove subject page. Go back to previous page if any
-				s.app.GoBack()
 			case 'R':
 				s.Refresh()
 			default:
@@ -261,7 +262,7 @@ func (s *SubjectPage) createRightText() string {
 	text += "\n\n"
 	text += fmt.Sprintf("标签: %s\n", renderTags(s.Subject.Tags, s.Subject.WikiTags))
 	text += "\n\n"
-	text += fmt.Sprintf("剧集:\n%s\n", renderEpisodes(s.Episodes))
+	text += fmt.Sprintf("正片:\n%s\n", renderEpisodes(s.Episodes))
 	return text
 }
 
@@ -289,9 +290,14 @@ func renderEpisodes(episodes *api.Episodes) string {
 	text := ""
 	today := time.Now()
 	for _, ep := range episodes.Data {
+		if ep.Type != 0 {
+			continue // Skip non-episode types
+		}
 		airTime, err := ep.GetAirTime()
 		if err != nil {
 			slog.Error("Failed to get air time for episode", "Error", err, "Episode", ep.ID)
+			text += fmt.Sprintf("%d. %s %s\n", ep.Sort, ui.GraphicsColor(ep.GetName()), ui.Grey(ep.Airdate))
+			continue
 		}
 		diff := dateCompare(airTime, today)
 		if diff < 0 {

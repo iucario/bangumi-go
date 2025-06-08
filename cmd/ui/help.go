@@ -56,3 +56,7 @@ func NewHelpPage(app *App) *Help {
 		app:      app,
 	}
 }
+
+func (h *Help) GetName() string {
+	return "help"
+}

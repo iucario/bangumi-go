@@ -32,6 +32,10 @@ func NewCalendarPage(app *App) *CalendarPage {
 	return calendar
 }
 
+func (c *CalendarPage) GetName() string {
+	return "calendar"
+}
+
 func (c *CalendarPage) fetchData() {
 	calendars, err := calendar.GetCalendar(c.client)
 	if err != nil {

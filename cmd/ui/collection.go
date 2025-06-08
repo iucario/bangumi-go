@@ -60,6 +60,34 @@ func NewCollectionPage(a *App, collectionStatus api.CollectionStatus) *Collectio
 	return collectionPage
 }
 
+func (c *CollectionPage) GetName() string {
+	return c.Name
+}
+
+// LoadData fetches and loads collection data asynchronously
+func (c *CollectionPage) LoadData() {
+	userCollections, err := list.ListUserCollection(c.app.User.Client, list.UserListOptions{
+		CollectionType: c.CollectionStatus,
+		Username:       c.app.User.Username,
+		SubjectType:    "all",
+		Limit:          PAGE_SIZE,
+		Offset:         0,
+	})
+	if err != nil {
+		slog.Error("Failed to fetch collections", "Error", err)
+		return
+	}
+
+	c.Collections = userCollections.Data
+	c.Total = int(userCollections.Total)
+	if len(userCollections.Data) > 0 {
+		c.CurrentSubject = int(userCollections.Data[0].Subject.ID)
+	}
+
+	c.renderListItems()
+	c.renderDetail()
+}
+
 func (c *CollectionPage) render() {
 	c.Clear()
 	c.ListView = tview.NewList()
