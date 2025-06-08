@@ -103,7 +103,7 @@ func (s *SubjectPage) render() {
 	s.SetBorders(false)
 	s.SetBorderColor(tcell.ColorGray)
 	top := tview.NewTextView().SetTextAlign(tview.AlignCenter)
-	top.SetText(fmt.Sprintf("%s %s", s.Subject.GetName(), api.SubjectTypeRev[int(s.Subject.Type)]))
+	top.SetText(fmt.Sprintf("%s %s %s", s.Subject.GetName(), s.Subject.Platform, api.SubjectTypeRev[int(s.Subject.Type)]))
 	top.SetTextColor(ui.Styles.TitleColor)
 
 	text := s.createLeftText()
@@ -130,7 +130,7 @@ func (s *SubjectPage) render() {
 		s.rightContent.SetBorderColor(tcell.ColorGray)
 	})
 	footer := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
-	footer.SetText("e: 编辑  q: 返回  R: 刷新 ←/→: 移动 ↑/↓: 滚动 ?: Help")
+	footer.SetText("e: 编辑  q: 返回  R: 刷新  ←/→: 移动  ↑/↓: 滚动  ?: Help")
 
 	s.AddItem(top, 0, 0, 1, 2, 0, 0, false).
 		AddItem(s.leftContent, 1, 0, 1, 1, 0, 0, false).
@@ -214,7 +214,11 @@ func (s *SubjectPage) createLeftText() string {
 	if s.Subject.Eps == 0 {
 		totalEps = "未知"
 	}
-	text := fmt.Sprintf("%s\n%s\n", ui.SecondaryText(s.Subject.NameCn), s.Subject.Name)
+	text := ""
+	if s.Subject.NameCn != "" && s.Subject.NameCn != s.Subject.Name {
+		text += fmt.Sprintf("%s\n", ui.SecondaryText(s.Subject.NameCn))
+	}
+	text += fmt.Sprintf("%s\n", ui.SecondaryText(s.Subject.Name))
 	text += fmt.Sprintf("https://bgm.tv/subject/%d\n", s.Subject.ID)
 	if s.Subject.Nsfw {
 		text += ui.GraphicsColor("NSFW") + "\n"
@@ -239,10 +243,10 @@ func (s *SubjectPage) createLeftText() string {
 	if s.Collection != nil && s.Collection.Type != 0 {
 		text += ui.SecondaryText("\n你的收藏信息:\n")
 		text += fmt.Sprintf("状态: %s\n", s.Collection.GetStatus())
+		text += fmt.Sprintf("看到第 %d 集/%d\n", s.Collection.EpStatus, s.Subject.Eps)
 		text += fmt.Sprintf("评分: %d\n", s.Collection.Rate)
-		text += fmt.Sprintf("短评: %s\n", s.Collection.Comment)
 		text += fmt.Sprintf("标签: %s\n", strings.Join(s.Collection.Tags, ", "))
-		text += fmt.Sprintf("看到第 %d 集\n", s.Collection.EpStatus)
+		text += fmt.Sprintf("短评: %s\n", s.Collection.Comment)
 		if s.Collection.VolStatus > 0 {
 			text += fmt.Sprintf("看到第 %d 卷\n", s.Collection.VolStatus)
 		}

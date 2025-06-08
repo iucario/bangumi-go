@@ -91,6 +91,20 @@ func (c *CollectionPage) render() {
 		}
 	})
 
+	// Change border color on focus/blur
+	c.ListView.SetFocusFunc(func() {
+		c.ListView.SetBorderColor(ui.Styles.TitleColor) // Focused color
+	})
+	c.ListView.SetBlurFunc(func() {
+		c.ListView.SetBorderColor(tcell.ColorGray) // Unfocused color
+	})
+	c.DetailView.SetFocusFunc(func() {
+		c.DetailView.SetBorderColor(ui.Styles.TitleColor)
+	})
+	c.DetailView.SetBlurFunc(func() {
+		c.DetailView.SetBorderColor(tcell.ColorGray)
+	})
+
 	c.Clear()
 	c.Flex.AddItem(c.ListView, 0, 2, true).
 		AddItem(c.DetailView, 0, 3, false)
@@ -189,7 +203,6 @@ func (c *CollectionPage) setKeyBindings() {
 				c.app.Pages.AddPage("collect", modal, true, true)
 				c.app.SetFocus(modal)
 			case 'R':
-				slog.Debug("refresh")
 				c.Refresh()
 			case 'n':
 				c.LoadNextPage()
@@ -222,8 +235,6 @@ func (c *CollectionPage) renderDetail() {
 }
 
 func (c *CollectionPage) onSave(collection *api.UserSubjectCollection) {
-	slog.Debug("save button clicked")
-	slog.Debug("posting collection...")
 	err := subject.PostCollection(c.app.User.Client, int(collection.SubjectID), collection.GetStatus(),
 		collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
 	if err != nil {
@@ -283,29 +294,29 @@ func createCollectionText(c *api.UserSubjectCollection) string {
 	}
 	text := ""
 	if c.Subject.NameCn == "" {
-		text += fmt.Sprintf("%s\n", ui.TertiaryText(c.Subject.Name))
+		text += fmt.Sprintf("%s\n", ui.SecondaryText(c.Subject.Name))
 	} else {
-		text += fmt.Sprintf("%s\n%s\n", ui.TertiaryText(c.Subject.NameCn), c.Subject.Name)
+		text += fmt.Sprintf("%s\n%s\n", ui.SecondaryText(c.Subject.NameCn), c.Subject.Name)
 	}
 	text += fmt.Sprintf("%s\n\n", api.SubjectTypeRev[int(c.Subject.Type)])
 	text += fmt.Sprintf("%s...\n", c.Subject.ShortSummary)
-	text += fmt.Sprintf("\nYour Tags: %s\n", ui.TertiaryText(c.GetTags()))
-	text += fmt.Sprintf("Your Rate: %s\n", ui.TertiaryText(rate))
-	text += fmt.Sprintf("Episodes Watched: %s of %s\n", ui.TertiaryText(fmt.Sprintf("%d", c.EpStatus)), totalEp)
+	text += fmt.Sprintf("\n你的标签: %s\n", ui.SecondaryText(c.GetTags()))
+	text += fmt.Sprintf("你的评分: %s\n", ui.SecondaryText(rate))
+	text += fmt.Sprintf("看到: %s of %s\n", ui.SecondaryText(fmt.Sprintf("%d", c.EpStatus)), totalEp)
 	if c.Subject.Type == 1 { // Book
 		totalVol := "Unknown"
 		if c.Subject.Volumes != 0 {
 			totalVol = fmt.Sprintf("%d", c.Subject.Volumes)
 		}
-		text += fmt.Sprintf("Volumes Read: %s of %s\n", ui.TertiaryText(fmt.Sprintf("%d", c.VolStatus)), totalVol)
+		text += fmt.Sprintf("读到: %s of %s\n", ui.SecondaryText(fmt.Sprintf("%d", c.VolStatus)), totalVol)
 	}
-	text += fmt.Sprintf("Private collection: %v\n", c.Private)
+	text += fmt.Sprintf("隐私收藏: %v\n", c.Private)
 	text += "\n---------------------------------------\n\n"
-	text += fmt.Sprintf("On Air Date: %s\n", c.Subject.Date)
-	text += fmt.Sprintf("User Score: %.1f\n", c.Subject.Score)
-	text += fmt.Sprintf("Rank: %d\n", c.Subject.Rank)
-	text += fmt.Sprintf("User Tags: %s\n", c.GetAllTags())
-	text += fmt.Sprintf("Marked By: %d users\n", c.Subject.CollectionTotal)
+	text += fmt.Sprintf("放送日期: %s\n", c.Subject.Date)
+	text += fmt.Sprintf("评分: %.1f\n", c.Subject.Score)
+	text += fmt.Sprintf("排名: %d\n", c.Subject.Rank)
+	text += fmt.Sprintf("用户标签: %s\n", c.GetAllTags())
+	text += fmt.Sprintf("收藏人数: %d\n", c.Subject.CollectionTotal)
 	return text
 }
 
