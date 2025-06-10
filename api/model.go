@@ -276,10 +276,7 @@ func (e *Episode) OnAirToday() bool {
 	today := time.Now()
 	today = today.Add(time.Hour * 9) // TO JST
 	todayStr := today.Format("2006-01-02")
-	if e.Airdate == todayStr {
-		return true
-	}
-	return false
+	return e.Airdate == todayStr
 }
 
 func (e *Episode) GetAirTime() (time.Time, error) {
