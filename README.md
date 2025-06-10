@@ -42,7 +42,7 @@ Edit collection
 Build
 
 ```sh
-go build -ldflags "-X 'github.com/iucario/bangumi-go/cmd.Version=v0.0.1'" -o dist/bgm
+go build -o dist/bgm
 ```
 
 Lint
@@ -83,6 +83,9 @@ UI
    ```
 
 For Windows, double-click the `.exe` file or run it from the command prompt.
+
+>[!NOTE]
+> You will probably be prompted with security warning by the system. It is because `bgm` is not signed. You can either trust the binary, or install from source using Go.
 
 ### Tip
 

@@ -11,7 +11,9 @@ type Help struct {
 }
 
 func NewHelpPage(app *App) *Help {
-	text := `Welcome to Bangumi CLI UI
+	text := `Welcome to Bangumi TUI
+	<https://github.com/iucario/bangumi-go>
+
 	Shortcuts:
 
 	[General]
@@ -30,18 +32,19 @@ func NewHelpPage(app *App) *Help {
 	h/left: Switch to left
 	l/right: Switch to right
 	Q: Quit
-	q: Back
+	q/Esc: Back
 
 	[Collection List]
 	e: Edit collection
 	R: Refresh list
 	n: Load next page
+	Space/Enter: View subject
 
 	[Subject Page]
 	e: Edit collection
 
 	[Calendar]
-	Enter: View subject
+	Space/Enter: View subject
 	`
 	view := tview.NewTextView().SetText(text)
 
