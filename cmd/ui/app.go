@@ -23,6 +23,11 @@ var PAGES = []string{
 	"subject",
 }
 
+var MODALS = []string{
+	"alert",
+	"collect",
+}
+
 // App controls the whole UI
 type App struct {
 	*tview.Application
@@ -144,6 +149,18 @@ func (a *App) OpenSubjectPage(subjectID int, prevPage string) {
 func (a *App) OpenHelpPage() {
 	a.PushPage(a.currentPage)
 	a.Goto("help")
+}
+
+// Alert displays a modal pop-up with a message.
+func (a *App) Alert(message string) {
+	modal := tview.NewModal().
+		SetText(message).
+		AddButtons([]string{"OK"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			a.Pages.RemovePage("alert")
+		})
+	modal.SetTitle("Alert").SetTitleColor(ui.Styles.GraphicsColor)
+	a.Pages.AddPage("alert", modal, true, true)
 }
 
 func (a *App) handlePageSwitch(key rune) {
