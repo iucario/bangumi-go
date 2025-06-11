@@ -106,16 +106,3 @@ func indexOfCollection(collections []api.UserSubjectCollection, subjectID uint32
 	}
 	return -1 // Return -1 if not found
 }
-
-// handleScrollKeys captures input events for the Box and handles 'j' and 'k' keys.
-func handleScrollKeys(b tview.Primitive) func(event *tcell.EventKey) *tcell.EventKey {
-	return func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Rune() {
-		case 'j':
-			b.InputHandler()(tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone), nil)
-		case 'k':
-			b.InputHandler()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone), nil)
-		}
-		return event
-	}
-}
