@@ -41,26 +41,9 @@ func SaveCredential(credential Credential) {
 	AbortOnError(err)
 }
 
-// Load credential JSON from file
-// TODO: should not be exported
-func LoadCredential() (Credential, error) {
-	configDir := util.ConfigDir()
-	credentialPath := fmt.Sprintf("%s/credential.json", configDir)
-	jsonBytes, err := os.ReadFile(credentialPath)
-	if err != nil {
-		return Credential{}, err
-	}
-	credential := Credential{}
-	err = json.Unmarshal(jsonBytes, &credential)
-	if err != nil {
-		return Credential{}, err
-	}
-	return credential, nil
-}
-
 // Handle all errors and refresh token. Throw error if a login is required.
 func GetCredential() (*Credential, error) {
-	credential, err := LoadCredential()
+	credential, err := loadCredential()
 	if err != nil {
 		return nil, err
 	}
@@ -83,4 +66,20 @@ func AbortOnError(err error) {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
+}
+
+// Load credential JSON from file
+func loadCredential() (Credential, error) {
+	configDir := util.ConfigDir()
+	credentialPath := fmt.Sprintf("%s/credential.json", configDir)
+	jsonBytes, err := os.ReadFile(credentialPath)
+	if err != nil {
+		return Credential{}, err
+	}
+	credential := Credential{}
+	err = json.Unmarshal(jsonBytes, &credential)
+	if err != nil {
+		return Credential{}, err
+	}
+	return credential, nil
 }

@@ -10,7 +10,7 @@ import (
 
 var (
 	ConfigDir string
-	Client    *api.AuthClient
+	client    *api.AuthClient
 )
 
 // authCmd represents the auth command
@@ -30,6 +30,6 @@ func init() {
 	cmd.RootCmd.AddCommand(authCmd)
 	ConfigDir = cmd.ConfigDir
 
-	credential, _ := api.LoadCredential()
-	Client = api.NewAuthClient(credential.AccessToken)
+	credential, _ := api.GetCredential()
+	client = api.NewAuthClient(credential.AccessToken)
 }

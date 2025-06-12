@@ -6,7 +6,6 @@ import (
 	"log/slog"
 )
 
-// TODO: should have token field and HTTPClient should not have it
 type AuthClient struct {
 	*HTTPClient
 }
@@ -102,7 +101,7 @@ type RefreshPayload struct {
 // It returns the new credential or an error if the refresh token is invalid or expired.
 // Updates the token in AuthClient and saves the new credential to the file.
 func (c *AuthClient) RefreshToken() (*Credential, error) {
-	credential, err := LoadCredential()
+	credential, err := loadCredential()
 	if err != nil {
 		fmt.Println("No token found")
 		return nil, err
