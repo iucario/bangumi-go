@@ -137,7 +137,7 @@ func (c *CollectionPage) render() {
 	c.Clear()
 	c.Flex.AddItem(c.ListView, 0, 2, true).
 		AddItem(c.DetailView, 0, 3, false)
-	c.Flex.SetFullScreen(true).SetBorderPadding(0, 0, 0, 0)
+	c.Flex.SetFullScreen(false).SetBorderPadding(0, 0, 0, 0)
 }
 
 func (c *CollectionPage) Refresh() {
@@ -172,6 +172,7 @@ func (c *CollectionPage) LoadNextPage() {
 	// TODO: can fetch API first to be assured
 	if size >= c.Total {
 		slog.Info("No more items to load")
+		c.app.Notify("No more items")
 		return
 	}
 	collections, err := list.ListUserCollection(c.app.User.Client, list.UserListOptions{

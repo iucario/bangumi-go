@@ -35,6 +35,7 @@ type App struct {
 	User        *api.User
 	currentPage string
 	pageHistory []string // stack of page names for back navigation
+	statusBar   *ui.StatusBar
 }
 
 func NewApp(user *api.User) *App {
@@ -44,6 +45,7 @@ func NewApp(user *api.User) *App {
 		Application: tview.NewApplication(),
 		Pages:       tview.NewPages(),
 		User:        user,
+		statusBar:   ui.NewStatusBar(),
 	}
 }
 
@@ -52,15 +54,15 @@ func (a *App) Run() error {
 	var wg sync.WaitGroup
 	wg.Add(len(api.C_STATUS) + 2) // Collection pages + static pages
 
-	// Create all pages concurrently
-	collectionPages := make(map[string]*CollectionPage)
+	// Create all pages concurrently using sync.Map for thread safety
+	var collectionPages sync.Map
 	pageCreation := func(page ui.Page) {
 		defer wg.Done()
 		name := page.GetName()
 		a.Pages.AddPage(name, page, true, false)
 		if slices.Contains(api.C_STATUS, api.CollectionStatus(name)) {
 			if cp, ok := page.(*CollectionPage); ok {
-				collectionPages[name] = cp
+				collectionPages.Store(name, cp)
 			} else {
 				slog.Error("Failed to cast page to CollectionPage", "Name", name)
 			}
@@ -89,7 +91,22 @@ func (a *App) Run() error {
 	a.PushPage("calendar")
 
 	// Start the application
-	return a.Application.SetRoot(a.Pages, true).SetFocus(a.Pages).Run()
+	container := tview.NewGrid()
+	container.SetRows(0, 1)
+	container.SetBorder(false)
+	container.SetBorders(false)
+	container.AddItem(a.Pages, 0, 0, 1, 1, 0, 0, true)
+	container.AddItem(a.statusBar, 1, 0, 1, 1, 0, 0, false)
+
+	// Set up global input capture to clear status bar on user interaction
+	a.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if a.statusBar != nil {
+			a.statusBar.Clear()
+		}
+		return event
+	})
+
+	return a.Application.SetRoot(container, true).SetFocus(a.Pages).Run()
 }
 
 // GoHome switchs app to page "watching"
@@ -149,6 +166,21 @@ func (a *App) OpenSubjectPage(subjectID int, prevPage string) {
 func (a *App) OpenHelpPage() {
 	a.PushPage(a.currentPage)
 	a.Goto("help")
+}
+
+// Notify shows a notification message in the status bar.
+func (a *App) Notify(message string) {
+	if a.statusBar != nil {
+		a.statusBar.SetMessage(message, "info") // default to info style
+	}
+}
+
+// NotifyWithStyle shows a notification message in the status bar with a specific style.
+// style can be "info", "success", "warning", or "error"
+func (a *App) NotifyWithStyle(message string, style string) {
+	if a.statusBar != nil {
+		a.statusBar.SetMessage(message, style)
+	}
 }
 
 // Alert displays a modal pop-up with a message.
