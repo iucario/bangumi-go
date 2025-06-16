@@ -55,7 +55,7 @@ var CollectionTypeRev = map[int]CollectionStatus{
 	5: Dropped,
 }
 
-var SubjectType map[string]int = map[string]int{
+var SubjectMap map[string]int = map[string]int{
 	"book":  1,
 	"anime": 2,
 	"music": 3,

@@ -64,7 +64,7 @@ func ListUserCollection(authClient *api.AuthClient, options UserListOptions) (*a
 	if options.SubjectType == "all" {
 		subjectTypeInt = -1
 	} else {
-		subjectTypeInt = api.SubjectType[options.SubjectType]
+		subjectTypeInt = api.SubjectMap[options.SubjectType]
 	}
 	if options.CollectionType == "all" {
 		collectionTypeInt = -1
