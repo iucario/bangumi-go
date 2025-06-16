@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -165,29 +166,27 @@ func (s *SubjectPage) setKeyBindings() {
 			s.app.SetFocus(s.leftContent)
 		case tcell.KeyRight:
 			s.app.SetFocus(s.rightContent)
-		default:
+		case tcell.KeyRune:
 			switch event.Rune() {
 			case 'e':
-				modal := NewEditModal(s.app, *s.Collection, s.onSave)
+				modal := NewCollectModal(s.app, *s.Collection, s.onSave)
 				s.app.Pages.AddPage("collect", modal, true, true)
 				s.app.SetFocus(modal)
 			case 'R':
 				s.Refresh()
 			default:
-				if s.app != nil {
-					s.app.handlePageSwitch(event.Rune())
-				}
+				s.app.handlePageSwitch(event.Rune())
 			}
 		}
 		return event
 	})
 }
 
-func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) {
+func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) error {
 	slog.Debug("Save Subject", "collect", collection)
 	if collection == nil {
 		slog.Error("collecting nil subject")
-		return
+		return errors.New("subject is nil")
 	}
 	err := subject.PostCollection(
 		s.app.User.Client,
@@ -200,6 +199,7 @@ func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) {
 	)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
+		return err
 	}
 	subject.WatchToEpisode(s.app.User.Client, int(s.Subject.ID), int(collection.EpStatus))
 
@@ -207,6 +207,7 @@ func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) {
 	s.Collection = collection
 	s.leftContent.SetText(s.createLeftText())
 	s.rightContent.SetText(s.createRightText())
+	return nil
 }
 
 func (s *SubjectPage) createLeftText() string {

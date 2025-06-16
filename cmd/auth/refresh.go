@@ -11,7 +11,7 @@ var refreshCmd = &cobra.Command{
 	Use:   "refresh",
 	Short: "Refresh token",
 	Run: func(cmd *cobra.Command, args []string) {
-		credential, err := Client.RefreshToken()
+		credential, err := client.RefreshToken()
 		if err != nil {
 			fmt.Println("Failed to refresh token", err)
 		} else {

@@ -15,44 +15,52 @@ import (
 
 var STATUS_LIST = []string{"wish", "done", "watching", "stashed", "dropped"}
 
-// NewEditModal creates a modal for a collected subject
-func NewEditModal(a *App, collection api.UserSubjectCollection, onSave func(*api.UserSubjectCollection)) *ui.Modal {
-	closeFn := func() {
-		a.Pages.RemovePage("collect")
-		a.SetFocus(a.Pages) // Restore focus to the main page
+type CollectModal struct {
+	*ui.Modal
+	app *App // Reference to the main app for closing the modal
+}
+
+func NewCollectModal(a *App, collection api.UserSubjectCollection, onSave func(*api.UserSubjectCollection) error) *CollectModal {
+	modal := &CollectModal{
+		Modal: nil,
+		app:   a,
 	}
-	form := createForm(collection, closeFn, onSave)
-	modal := ui.NewModalForm("Edit Collection", form)
+	form := modal.createForm(collection, onSave)
+	modal.Modal = ui.NewModalForm("Edit Collection", form)
 
 	// Set input capture at the form level to catch Esc
 	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
-			closeFn()
+			modal.Close()
 			return nil // Prevent event from propagating
 		}
 		return event
 	})
 
 	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-		if buttonIndex == -1 {
-			slog.Debug("modal closed")
-			closeFn()
-		} else {
-			slog.Debug(fmt.Sprintf("button %d clicked", buttonIndex))
-			slog.Debug(fmt.Sprintf("button %s clicked", buttonLabel))
+		if buttonIndex < 0 {
+			modal.Close()
 		}
 	})
 
 	return modal
 }
 
+func (m *CollectModal) Close() {
+	m.app.Pages.RemovePage("collect")
+	m.app.SetFocus(m.app.Pages) // Restore focus to the main page.
+}
+
 // createForm creates a form for editing the collection.
-func createForm(collection api.UserSubjectCollection, closeFn func(), onSave func(*api.UserSubjectCollection)) *tview.Form {
+func (m *CollectModal) createForm(collection api.UserSubjectCollection, onSave func(*api.UserSubjectCollection) error) *tview.Form {
 	initTags := collection.GetTags()
 
 	form := tview.NewForm()
 	form.SetBorder(true).SetTitle(fmt.Sprintf("Edit Subject %d", collection.Subject.ID)).SetTitleAlign(tview.AlignLeft)
 	form.AddInputField("Episodes watched", util.Uint32ToString(collection.EpStatus), 5, nil, func(text string) {
+		if text == "" {
+			return
+		}
 		epStatus, err := strconv.Atoi(text)
 		if err != nil {
 			slog.Error(fmt.Sprintf("invalid episode number %s", text))
@@ -76,7 +84,7 @@ func createForm(collection api.UserSubjectCollection, closeFn func(), onSave fun
 		rate, err := strconv.Atoi(text)
 		if err != nil {
 			slog.Error(fmt.Sprintf("invalid rate %s. Must be in [0-10]", text))
-			// FIXME: alert error
+			rate = 0 // Default to 0 if invalid
 		}
 		rate = max(0, min(10, rate))
 		collection.Rate = uint32(rate)
@@ -88,11 +96,14 @@ func createForm(collection api.UserSubjectCollection, closeFn func(), onSave fun
 		collection.Private = checked
 	})
 	form.AddButton("Save", func() {
-		onSave(&collection)
-		closeFn()
+		err := onSave(&collection)
+		if err != nil {
+			m.app.Alert(fmt.Sprintf("Failed to save collection: %v", err))
+		}
+		m.Close()
 	})
 	form.AddButton("Cancel", func() {
-		closeFn()
+		m.Close()
 	})
 	return form
 }
@@ -105,17 +116,4 @@ func indexOfCollection(collections []api.UserSubjectCollection, subjectID uint32
 		}
 	}
 	return -1 // Return -1 if not found
-}
-
-// handleScrollKeys captures input events for the Box and handles 'j' and 'k' keys.
-func handleScrollKeys(b tview.Primitive) func(event *tcell.EventKey) *tcell.EventKey {
-	return func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Rune() {
-		case 'j':
-			b.InputHandler()(tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone), nil)
-		case 'k':
-			b.InputHandler()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone), nil)
-		}
-		return event
-	}
 }

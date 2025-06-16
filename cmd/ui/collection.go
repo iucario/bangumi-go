@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -136,7 +137,7 @@ func (c *CollectionPage) render() {
 	c.Clear()
 	c.Flex.AddItem(c.ListView, 0, 2, true).
 		AddItem(c.DetailView, 0, 3, false)
-	c.Flex.SetFullScreen(true).SetBorderPadding(0, 0, 0, 0)
+	c.Flex.SetFullScreen(false).SetBorderPadding(0, 0, 0, 0)
 }
 
 func (c *CollectionPage) Refresh() {
@@ -171,6 +172,7 @@ func (c *CollectionPage) LoadNextPage() {
 	// TODO: can fetch API first to be assured
 	if size >= c.Total {
 		slog.Info("No more items to load")
+		c.app.Notify("No more items")
 		return
 	}
 	collections, err := list.ListUserCollection(c.app.User.Client, list.UserListOptions{
@@ -227,7 +229,7 @@ func (c *CollectionPage) setKeyBindings() {
 					slog.Warn("Invalid collection index for edit")
 					return event
 				}
-				modal := NewEditModal(c.app, c.Collections[index], c.onSave)
+				modal := NewCollectModal(c.app, c.Collections[index], c.onSave)
 				c.app.Pages.AddPage("collect", modal, true, true)
 				c.app.SetFocus(modal)
 			case 'R':
@@ -262,11 +264,12 @@ func (c *CollectionPage) renderDetail() {
 	}
 }
 
-func (c *CollectionPage) onSave(collection *api.UserSubjectCollection) {
+func (c *CollectionPage) onSave(collection *api.UserSubjectCollection) error {
 	err := subject.PostCollection(c.app.User.Client, int(collection.SubjectID), collection.GetStatus(),
 		collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
 	if err != nil {
 		slog.Error("Failed to post collection", "Error", err)
+		return err
 	}
 	subject.WatchToEpisode(c.app.User.Client, int(collection.SubjectID), int(collection.EpStatus))
 
@@ -274,7 +277,7 @@ func (c *CollectionPage) onSave(collection *api.UserSubjectCollection) {
 	updatedIndex := indexOfCollection(c.Collections, collection.SubjectID)
 	if updatedIndex <= 0 {
 		slog.Error("Collection not found in the list")
-		return
+		return errors.New("collection not found in the list")
 	}
 	c.Collections = toFrontItem(c.Collections, updatedIndex)
 	c.Collections[0] = *collection
@@ -282,6 +285,7 @@ func (c *CollectionPage) onSave(collection *api.UserSubjectCollection) {
 	c.renderDetail()
 	// TODO: update other collection page if needed
 	// The updated collection may go to other collection page
+	return nil
 }
 
 // Select a subject in the collection page by its ID.
@@ -359,4 +363,17 @@ func toFrontItem(collections []api.UserSubjectCollection, index int) []api.UserS
 	newSlice = append(newSlice, collection)
 	newSlice = append(newSlice, collections...)
 	return newSlice
+}
+
+// handleScrollKeys captures input events for the Box and handles 'j' and 'k' keys.
+func handleScrollKeys(b tview.Primitive) func(event *tcell.EventKey) *tcell.EventKey {
+	return func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'j':
+			b.InputHandler()(tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone), nil)
+		case 'k':
+			b.InputHandler()(tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone), nil)
+		}
+		return event
+	}
 }

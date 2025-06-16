@@ -16,11 +16,11 @@ import (
 func main() {
 	logOutput := os.Stderr
 
-	handler := slog.NewJSONHandler(io.Discard, &slog.HandlerOptions{
+	handler := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	})
 	if os.Getenv("BGM_ENV") == "dev" {
-		handler = slog.NewJSONHandler(logOutput, &slog.HandlerOptions{
+		handler = slog.NewTextHandler(logOutput, &slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		})
 	}
