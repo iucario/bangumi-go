@@ -10,6 +10,17 @@ var (
 	REAL  = SubjectType(6)
 )
 
+var S_TYPE_ALL = []SubjectType{BOOK, ANIME, MUSIC, GAME, REAL}
+
+var SubjectTypeMap = map[string]SubjectType{
+	"book":  BOOK,
+	"anime": ANIME,
+	"music": MUSIC,
+	"game":  GAME,
+	"real":  REAL,
+	"all":   SubjectType(0), // Custom type for all subjects
+}
+
 type Sort string
 
 var (
@@ -18,6 +29,13 @@ var (
 	RANK  = Sort("rank")
 	SCORE = Sort("score")
 )
+
+var SortMap = map[string]Sort{
+	"match": MATCH,
+	"heat":  HEAT,
+	"rank":  RANK,
+	"score": SCORE,
+}
 
 type Payload struct {
 	Keyword string `json:"keyword"`

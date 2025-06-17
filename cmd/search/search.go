@@ -43,17 +43,10 @@ var searchCmd = &cobra.Command{
 		if len(subjectType) > 0 {
 			types := make([]api.SubjectType, 0, len(subjectType))
 			for _, t := range subjectType {
-				switch strings.ToLower(t) {
-				case "book":
-					types = append(types, api.BOOK)
-				case "music":
-					types = append(types, api.MUSIC)
-				case "game":
-					types = append(types, api.GAME)
-				case "real":
-					types = append(types, api.REAL)
-				case "anime":
-					types = append(types, api.ANIME)
+				if subjectT, ok := api.SubjectTypeMap[strings.ToLower(t)]; ok && subjectT != api.SubjectType(0) { // Exclude custom "all" type
+					types = append(types, subjectT)
+				} else {
+					slog.Warn("Invalid subject type", "type", t)
 				}
 			}
 			if len(types) > 0 {
@@ -62,18 +55,10 @@ var searchCmd = &cobra.Command{
 		}
 
 		// Convert sort string to Sort type
-		var sortEnum api.Sort
-		switch strings.ToLower(sort) {
-		case "match":
-			sortEnum = api.MATCH
-		case "heat":
-			sortEnum = api.HEAT
-		case "rank":
-			sortEnum = api.RANK
-		case "score":
-			sortEnum = api.SCORE
-		default:
-			sortEnum = api.MATCH
+		var sortEnum, ok = api.SortMap[strings.ToLower(sort)]
+		if !ok {
+			slog.Error("Invalid sort option", "sort", sort)
+			return
 		}
 
 		payload := api.Payload{
@@ -86,8 +71,9 @@ var searchCmd = &cobra.Command{
 		if reqBody, err := json.MarshalIndent(payload, "", "  "); err == nil {
 			slog.Debug("Search request payload", "payload", string(reqBody))
 		}
-
-		result, err := Search(client, payload, 20, 0)
+		pagesize := 20
+		offset := 0
+		result, err := Search(client, payload, pagesize, offset)
 		if err != nil {
 			slog.Error("Error searching", "error", err)
 			return
@@ -95,12 +81,11 @@ var searchCmd = &cobra.Command{
 
 		// Print results in a formatted way
 		fmt.Printf("Total results: %d\n", result.Total)
-		fmt.Printf("Showing results %d/%d\n\n", result.Limit, result.Total)
+		fmt.Printf("Showing results %d/%d\n", result.Limit, result.Total)
 
 		for _, subject := range result.Data {
-			name := subject.GetName()
-			fmt.Printf("ID: %d\nName: %s\nType: %v\nRating: %.1f (%d)\n\n",
-				subject.ID, name, subject.Type, subject.Rating.Score, subject.Rating.Total)
+			fmt.Printf("ID: %d Name: %s Type: %v Rating: %.1f (%d)\n",
+				subject.ID, subject.GetName(), subject.Type, subject.Rating.Score, subject.Rating.Total)
 		}
 	},
 }

@@ -11,15 +11,9 @@ func (c CollectionStatus) String() string {
 	return string(c)
 }
 
-type (
-	SubjectT      string
-	EpisodeStatus string
-)
+type EpisodeStatus string
 
-var (
-	C_STATUS = []CollectionStatus{Watching, Wish, Done, OnHold, Dropped}
-	S_Type   = []SubjectT{Book, Anime, Music, Game, Real}
-)
+var C_STATUS = []CollectionStatus{Watching, Wish, Done, OnHold, Dropped}
 
 const (
 	Wish     CollectionStatus = "wish"
@@ -28,15 +22,6 @@ const (
 	OnHold   CollectionStatus = "stashed"
 	Dropped  CollectionStatus = "dropped"
 	All      CollectionStatus = "all" // custom
-)
-
-const (
-	Book   SubjectT = "book"
-	Anime  SubjectT = "anime"
-	Music  SubjectT = "music"
-	Game   SubjectT = "game"
-	Real   SubjectT = "real"
-	AllSub SubjectT = "all" // custom
 )
 
 var CollectionType = map[CollectionStatus]int{
