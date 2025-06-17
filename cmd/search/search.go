@@ -17,9 +17,9 @@ var (
 	subjectType []string
 	metaTags    []string
 	tags        []string
-	airDate     string
-	rating      int
-	rank        int
+	airDate     []string
+	rating      []string
+	rank        []string
 	nsfw        bool
 )
 
@@ -93,12 +93,12 @@ var searchCmd = &cobra.Command{
 func init() {
 	searchCmd.Flags().StringVarP(&keyword, "keyword", "k", "", "Search keyword")
 	searchCmd.Flags().StringVarP(&sort, "sort", "s", "match", "Sort by: match, heat, rank, score")
-	searchCmd.Flags().StringSliceVarP(&subjectType, "type", "t", nil, "Subject types: book, anime, music, game, real (can specify multiple)")
-	searchCmd.Flags().StringSliceVarP(&metaTags, "meta-tag", "m", nil, "Meta tags (AND relation). Add '-' at beginning to exclude")
-	searchCmd.Flags().StringSliceVarP(&tags, "tag", "T", nil, "Tags (AND relation). Add '-' at beginning to exclude")
-	searchCmd.Flags().StringVarP(&airDate, "air-date", "d", "", "Air date filter (YYYY-MM-DD)")
-	searchCmd.Flags().IntVarP(&rating, "rating", "r", 0, "Rating filter")
-	searchCmd.Flags().IntVarP(&rank, "rank", "R", 0, "Rank filter")
+	searchCmd.Flags().StringSliceVarP(&subjectType, "type", "c", nil, "Subject types: book, anime, music, game, real (can select multiple) E.g. -c 'anime,book'")
+	searchCmd.Flags().StringSliceVarP(&metaTags, "meta-tag", "T", nil, "Meta tags (AND relation). Add '-' at beginning to exclude E.g. -T '原创,热血,-OVA'")
+	searchCmd.Flags().StringSliceVarP(&tags, "tag", "t", nil, "Tags (AND relation). Add '-' at beginning to exclude E.g. -t '原创,京阿尼,-OVA'")
+	searchCmd.Flags().StringSliceVarP(&airDate, "date", "d", nil, "Air date filter E.g. -d '>=2010-01-01,<2010-12-31'")
+	searchCmd.Flags().StringSliceVarP(&rating, "rating", "r", nil, "Rating filter E.g. -r '>=7,<9'")
+	searchCmd.Flags().StringSliceVarP(&rank, "rank", "R", nil, "Rank filter E.g. -R '<=200,>100'")
 	searchCmd.Flags().BoolVarP(&nsfw, "nsfw", "n", false, "Include NSFW content")
 
 	cmd.RootCmd.AddCommand(searchCmd)

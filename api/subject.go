@@ -43,14 +43,14 @@ type Payload struct {
 	Filter  Filter `json:"filter"`
 }
 
-// All lists are AND relation.
+// All lists are AND relation execpt for Type
 type Filter struct {
-	Type     []SubjectType `json:"type,omitempty"`
+	Type     []SubjectType `json:"type,omitempty"`      // OR relation
 	MetaTags []string      `json:"meta_tags,omitempty"` // AND relation. add a '-' at the beginning to exclude
 	Tag      []string      `json:"tag,omitempty"`       // AND relation. '-' to exclude
-	AirDate  string        `json:"air_date,omitempty"`  // AND relation. YYYY-MM-DD. E.g. [">=2020-07-01", "<2020-10-01"]
-	Rating   int           `json:"rating,omitempty"`    // AND. [">=6", "<8"]
-	Rank     int           `json:"rank,omitempty"`      // AND [">10", "<=18"]
+	AirDate  []string      `json:"air_date,omitempty"`  // AND relation. YYYY-MM-DD. E.g. [">=2020-07-01", "<2020-10-01"]
+	Rating   []string      `json:"rating,omitempty"`    // AND. [">=6", "<8"]
+	Rank     []string      `json:"rank,omitempty"`      // AND [">10", "<=18"]
 	NSFW     bool          `json:"nsfw,omitempty"`      // True for NSFW only, False SFW. Null for both
 }
 
