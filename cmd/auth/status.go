@@ -16,7 +16,7 @@ var statusCmd = &cobra.Command{
 			fmt.Println("No credential found.")
 			return
 		}
-		statusFlag := client.GetStatus()
+		statusFlag := Client.GetStatus()
 		if statusFlag {
 			fmt.Println("Auth status: OK")
 		} else {

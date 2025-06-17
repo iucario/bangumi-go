@@ -26,11 +26,11 @@ var loginCmd = &cobra.Command{
 		if err != nil {
 			// Token does not exist, login from browser
 			BrowserLogin()
-		} else if client.GetStatus() {
+		} else if Client.GetStatus() {
 			fmt.Println("Token is still valid")
 			return
 		}
-		_, err = client.RefreshToken()
+		_, err = Client.RefreshToken()
 		if err != nil {
 			BrowserLogin()
 		}
@@ -66,7 +66,7 @@ func start(wg *sync.WaitGroup) {
 	http.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 		if code != "" {
-			client.GetAccessToken(code)
+			Client.GetAccessToken(code)
 			fmt.Println("Login success.")
 			w.Header().Set("Connection", "close")
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
