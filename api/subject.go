@@ -21,6 +21,14 @@ var SubjectTypeMap = map[string]SubjectType{
 	"all":   SubjectType(0), // Custom type for all subjects
 }
 
+var SubjectTypeRev map[int]string = map[int]string{
+	1: "book",
+	2: "anime",
+	3: "music",
+	4: "game",
+	6: "real",
+}
+
 type Sort string
 
 var (

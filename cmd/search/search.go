@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 
 	"github.com/iucario/bangumi-go/api"
@@ -24,9 +25,17 @@ var (
 )
 
 var searchCmd = &cobra.Command{
-	Use:   "search",
-	Short: "Search bangumi",
+	Use:     "search",
+	Short:   "Search bangumi",
+	Example: `bgm search -k "" -s match -c anime -T "原创" -t "科幻" -d ">=2020-01-01,<2025-12-31" -r ">=8,<10"`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// Show help if no input is provided
+		if strings.TrimSpace(keyword) == "" && sort == "" && len(subjectType) == 0 && len(metaTags) == 0 &&
+			len(tags) == 0 && len(airDate) == 0 && len(rating) == 0 && len(rank) == 0 {
+			cmd.Help()
+			return
+		}
+
 		client := api.NewAuthClientWithConfig()
 
 		// Initialize filter
@@ -58,7 +67,7 @@ var searchCmd = &cobra.Command{
 		var sortEnum, ok = api.SortMap[strings.ToLower(sort)]
 		if !ok {
 			slog.Error("Invalid sort option", "sort", sort)
-			return
+			sortEnum = api.MATCH // Default to match if invalid
 		}
 
 		payload := api.Payload{
@@ -68,9 +77,8 @@ var searchCmd = &cobra.Command{
 		}
 
 		// Debug: print the request payload
-		if reqBody, err := json.MarshalIndent(payload, "", "  "); err == nil {
-			slog.Debug("Search request payload", "payload", string(reqBody))
-		}
+		slog.Debug("Search request payload", "payload", payload)
+
 		pagesize := 20
 		offset := 0
 		result, err := Search(client, payload, pagesize, offset)
@@ -84,15 +92,15 @@ var searchCmd = &cobra.Command{
 		fmt.Printf("Showing results %d/%d\n", result.Limit, result.Total)
 
 		for _, subject := range result.Data {
-			fmt.Printf("ID: %d Name: %s Type: %v Rating: %.1f (%d)\n",
-				subject.ID, subject.GetName(), subject.Type, subject.Rating.Score, subject.Rating.Total)
+			fmt.Printf("%d %s | %v | %.1f (%d) | #%d\n",
+				subject.ID, subject.GetName(), api.SubjectTypeRev[int(subject.Type)], subject.Rating.Score, subject.Rating.Total, subject.Rating.Rank)
 		}
 	},
 }
 
 func init() {
 	searchCmd.Flags().StringVarP(&keyword, "keyword", "k", "", "Search keyword")
-	searchCmd.Flags().StringVarP(&sort, "sort", "s", "match", "Sort by: match, heat, rank, score")
+	searchCmd.Flags().StringVarP(&sort, "sort", "s", "", "Sort by: match, heat, rank, score")
 	searchCmd.Flags().StringSliceVarP(&subjectType, "type", "c", nil, "Subject types: book, anime, music, game, real (can select multiple) E.g. -c 'anime,book'")
 	searchCmd.Flags().StringSliceVarP(&metaTags, "meta-tag", "T", nil, "Meta tags (AND relation). Add '-' at beginning to exclude E.g. -T '原创,热血,-OVA'")
 	searchCmd.Flags().StringSliceVarP(&tags, "tag", "t", nil, "Tags (AND relation). Add '-' at beginning to exclude E.g. -t '原创,京阿尼,-OVA'")
@@ -105,7 +113,15 @@ func init() {
 }
 
 func Search(c api.Client, payload api.Payload, limit, offset int) (*api.SubjectList, error) {
-	url := "https://api.bgm.tv/v0/search/subjects"
+	// Validate rating filter using regex
+	ratingRegex := regexp.MustCompile(`^(>|<|>=|<=|=) *\d+(\.\d+)?$`)
+	for _, r := range payload.Filter.Rating {
+		if !ratingRegex.MatchString(r) {
+			return nil, fmt.Errorf("invalid score filter: %q, must have \"(>|<|>=|<=|=)\" in the beginning of values", r)
+		}
+	}
+
+	url := fmt.Sprintf("https://api.bgm.tv/v0/search/subjects?limit=%d&offset=%d", limit, offset)
 	reqBody, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling payload: %v", err)

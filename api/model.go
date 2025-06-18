@@ -48,14 +48,6 @@ var SubjectMap map[string]int = map[string]int{
 	"real":  6,
 }
 
-var SubjectTypeRev map[int]string = map[int]string{
-	1: "book",
-	2: "anime",
-	3: "music",
-	4: "game",
-	6: "real",
-}
-
 var EpisodeCollectionType map[string]int = map[string]int{
 	"delete":  0,
 	"wish":    1,
