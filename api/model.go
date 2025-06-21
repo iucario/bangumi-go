@@ -166,6 +166,21 @@ func (s *SlimSubject) GetAllTags() string {
 	return tagNames(s.Tags)
 }
 
+// Get first num tags in a space-separated string
+func (s *SlimSubject) GetTags(num int) string {
+	if num <= 0 || len(s.Tags) == 0 {
+		return ""
+	}
+	if num > len(s.Tags) {
+		num = len(s.Tags)
+	}
+	names := make([]string, num)
+	for i := 0; i < num; i++ {
+		names[i] = s.Tags[i].Name
+	}
+	return strings.Join(names, " ")
+}
+
 // Returned type of /v0/users/-/collections/{subject_id}/episodes
 type UserEpisodeCollections struct {
 	Total  int                     `json:"total"`

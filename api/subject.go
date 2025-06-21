@@ -2,6 +2,30 @@ package api
 
 type SubjectType int
 
+func (s SubjectType) String() string {
+	if r, ok := SubjectTypeRev[int(s)]; ok {
+		return r
+	}
+	return ""
+}
+
+func (s SubjectType) CN() string {
+	switch s {
+	case BOOK:
+		return "书籍"
+	case ANIME:
+		return "动画"
+	case MUSIC:
+		return "音乐"
+	case GAME:
+		return "游戏"
+	case REAL:
+		return "三次元"
+	default:
+		return ""
+	}
+}
+
 var (
 	BOOK  = SubjectType(1)
 	ANIME = SubjectType(2)
