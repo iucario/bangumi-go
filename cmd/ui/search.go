@@ -21,6 +21,10 @@ type SearchPage struct {
 	results        []api.Subject
 	typeCheckboxes []*tview.Checkbox
 	statusBar      *ui.StatusBar
+	// Pagination fields
+	currentPage  int
+	pageSize     int
+	totalResults int
 }
 
 func NewSearchPage(app *App) *SearchPage {
@@ -39,6 +43,8 @@ func NewSearchPage(app *App) *SearchPage {
 		tagInput:       tview.NewInputField().SetLabel("标签: ").SetFieldWidth(40),
 		typeCheckboxes: typeCheckboxes,
 		statusBar:      ui.NewStatusBar(),
+		currentPage:    1,
+		pageSize:       20,
 	}
 	search.fetchData()
 	search.render()
@@ -49,15 +55,22 @@ func NewSearchPage(app *App) *SearchPage {
 
 // search fetches data and render the ui accordingly
 func (p *SearchPage) search() {
+	p.statusBar.SetMessage("Searching...", "info")
+	// Only reset to first page if not already on a pagination action
+	if p.currentPage == 0 {
+		p.currentPage = 1
+	}
 	p.fetchData()
-	p.statusBar.SetMessage(fmt.Sprintf("Found %d results", len(p.results)), "success")
+	maxPage := 1
+	if p.pageSize > 0 {
+		maxPage = (p.totalResults + p.pageSize - 1) / p.pageSize
+	}
+	statusMsg := fmt.Sprintf("Found %d results (Page %d/%d)", p.totalResults, p.currentPage, maxPage)
+	p.statusBar.SetMessage(statusMsg, "success")
 	p.render()
-	// Focus the results table after rendering
-	p.app.SetFocus(p.table)
 }
 
 func (p *SearchPage) fetchData() {
-	p.statusBar.SetMessage("Searching...", "info")
 	filter := api.Filter{
 		MetaTags: []string{},
 		Tag:      []string{},
@@ -82,14 +95,18 @@ func (p *SearchPage) fetchData() {
 		Sort:    api.MATCH,
 		Filter:  filter,
 	}
-	pagesize := 20
-	offset := 0
+	pagesize := p.pageSize
+	offset := (p.currentPage - 1) * p.pageSize
 	result, err := search.Search(p.client, payload, pagesize, offset)
 	if err != nil {
 		p.statusBar.SetMessage(fmt.Sprintf("Error searching: %v error", err.Error()), "error")
 		return
 	}
 	p.results = result.Data
+	p.totalResults = result.Total
+	if p.totalResults == 0 {
+		p.totalResults = len(result.Data)
+	}
 }
 
 func (p *SearchPage) render() {
@@ -100,7 +117,7 @@ func (p *SearchPage) render() {
 	// Create typeFlex locally
 	typeFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
 	for _, cb := range p.typeCheckboxes {
-		typeFlex.AddItem(cb, 14, 0, false)
+		typeFlex.AddItem(cb, 8, 0, false)
 	}
 	p.Grid.AddItem(p.searchInput, 0, 0, 1, 1, 0, 0, true)
 	p.Grid.AddItem(p.tagInput, 1, 0, 1, 1, 0, 0, false)
@@ -224,7 +241,24 @@ func (p *SearchPage) setKeyBindings() {
 			return nil
 		}
 		if event.Key() == tcell.KeyRune {
-			p.app.handlePageSwitch(event.Rune())
+			// Pagination: n for next, p for previous
+			switch event.Rune() {
+			case 'n':
+				maxPage := (p.totalResults + p.pageSize - 1) / p.pageSize
+				if p.currentPage < maxPage {
+					p.currentPage++
+					p.search()
+				}
+				return nil
+			case 'p':
+				if p.currentPage > 1 {
+					p.currentPage--
+					p.search()
+				}
+				return nil
+			default:
+				p.app.handlePageSwitch(event.Rune())
+			}
 		}
 		return event
 	})
