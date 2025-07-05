@@ -236,34 +236,38 @@ func (p *SearchPage) setKeyBindings() {
 	p.startYearInput.SetInputCapture(p.makeInputCapture(p.endYearInput, p.tagInput, true))
 	p.endYearInput.SetInputCapture(p.makeInputCapture(p.typeCheckboxes[0], p.startYearInput, true))
 	for idx, cb := range p.typeCheckboxes {
+		i := idx // capture index for closure
 		cb.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			switch event.Key() {
 			case tcell.KeyEnter:
 				p.search()
 				return nil
 			case tcell.KeyTAB:
-				if idx < len(p.typeCheckboxes)-1 {
-					p.app.SetFocus(p.typeCheckboxes[idx+1])
+				if i < len(p.typeCheckboxes)-1 {
+					p.app.SetFocus(p.typeCheckboxes[i+1])
 				} else {
 					p.app.SetFocus(p.table)
 				}
 				return nil
 			case tcell.KeyBacktab:
-				if idx > 0 {
-					p.app.SetFocus(p.typeCheckboxes[idx-1])
+				if i > 0 {
+					p.app.SetFocus(p.typeCheckboxes[i-1])
 				} else {
 					p.app.SetFocus(p.endYearInput)
 				}
 				return nil
 			case tcell.KeyLeft, tcell.KeyUp:
-				if idx > 0 {
-					p.app.SetFocus(p.typeCheckboxes[idx-1])
+				if i > 0 {
+					p.app.SetFocus(p.typeCheckboxes[i-1])
 				}
 				return nil
 			case tcell.KeyRight, tcell.KeyDown:
-				if idx < len(p.typeCheckboxes)-1 {
-					p.app.SetFocus(p.typeCheckboxes[idx+1])
+				if i < len(p.typeCheckboxes)-1 {
+					p.app.SetFocus(p.typeCheckboxes[i+1])
 				}
+				return nil
+			case tcell.KeyEsc:
+				p.app.SetFocus(p.table)
 				return nil
 			case tcell.KeyRune:
 				if event.Rune() == ' ' {
