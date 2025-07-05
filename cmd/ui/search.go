@@ -19,15 +19,11 @@ type SearchPage struct {
 	searchInput *tview.InputField
 	tagInput    *tview.InputField
 	// Date picker fields (start and end)
-	startYearInput  *tview.InputField
-	startMonthInput *tview.InputField
-	startDayInput   *tview.InputField
-	endYearInput    *tview.InputField
-	endMonthInput   *tview.InputField
-	endDayInput     *tview.InputField
-	results         []api.Subject
-	typeCheckboxes  []*tview.Checkbox
-	statusBar       *ui.StatusBar
+	startYearInput *tview.InputField
+	endYearInput   *tview.InputField
+	results        []api.Subject
+	typeCheckboxes []*tview.Checkbox
+	statusBar      *ui.StatusBar
 	// Pagination fields
 	currentPage  int
 	pageSize     int
@@ -42,12 +38,8 @@ func NewSearchPage(app *App) *SearchPage {
 		typeCheckboxes[i] = cb
 	}
 	// Date input fields
-	startYear := tview.NewInputField().SetLabel("").SetFieldWidth(5).SetPlaceholder("YYYY")
-	startMonth := tview.NewInputField().SetLabel("").SetFieldWidth(3).SetPlaceholder("MM")
-	startDay := tview.NewInputField().SetLabel("").SetFieldWidth(3).SetPlaceholder("DD")
-	endYear := tview.NewInputField().SetLabel("").SetFieldWidth(5).SetPlaceholder("YYYY")
-	endMonth := tview.NewInputField().SetLabel("").SetFieldWidth(3).SetPlaceholder("MM")
-	endDay := tview.NewInputField().SetLabel("").SetFieldWidth(3).SetPlaceholder("DD")
+	startDate := tview.NewInputField().SetLabel("日期: ").SetFieldWidth(10).SetPlaceholder("YYYYMMDD")
+	endDate := tview.NewInputField().SetLabel("- ").SetFieldWidth(10).SetPlaceholder("YYYYMMDD")
 	// Only allow numbers
 	numberOnly := func(textToCheck string, lastChar rune) bool {
 		if lastChar == 0 {
@@ -55,29 +47,21 @@ func NewSearchPage(app *App) *SearchPage {
 		}
 		return lastChar >= '0' && lastChar <= '9'
 	}
-	startYear.SetAcceptanceFunc(numberOnly)
-	startMonth.SetAcceptanceFunc(numberOnly)
-	startDay.SetAcceptanceFunc(numberOnly)
-	endYear.SetAcceptanceFunc(numberOnly)
-	endMonth.SetAcceptanceFunc(numberOnly)
-	endDay.SetAcceptanceFunc(numberOnly)
+	startDate.SetAcceptanceFunc(numberOnly)
+	endDate.SetAcceptanceFunc(numberOnly)
 	search := &SearchPage{
-		Grid:            tview.NewGrid(),
-		client:          app.User.Client.HTTPClient,
-		app:             app,
-		table:           tview.NewTable(),
-		searchInput:     tview.NewInputField().SetLabel("关键词: ").SetFieldWidth(40),
-		tagInput:        tview.NewInputField().SetLabel("标签  : ").SetFieldWidth(40),
-		startYearInput:  startYear,
-		startMonthInput: startMonth,
-		startDayInput:   startDay,
-		endYearInput:    endYear,
-		endMonthInput:   endMonth,
-		endDayInput:     endDay,
-		typeCheckboxes:  typeCheckboxes,
-		statusBar:       ui.NewStatusBar(),
-		currentPage:     1,
-		pageSize:        20,
+		Grid:           tview.NewGrid(),
+		client:         app.User.Client.HTTPClient,
+		app:            app,
+		table:          tview.NewTable(),
+		searchInput:    tview.NewInputField().SetLabel("关键词: ").SetFieldWidth(40),
+		tagInput:       tview.NewInputField().SetLabel("标签  : ").SetFieldWidth(40),
+		startYearInput: startDate,
+		endYearInput:   endDate,
+		typeCheckboxes: typeCheckboxes,
+		statusBar:      ui.NewStatusBar(),
+		currentPage:    1,
+		pageSize:       20,
 	}
 	search.render()
 	search.setKeyBindings()
@@ -115,12 +99,14 @@ func (p *SearchPage) fetchData() {
 	tags := p.tagInput.GetText()
 	selectedTypes := p.CheckedTypes()
 	// Date range
-	if len(p.startYearInput.GetText()) == 4 && len(p.startMonthInput.GetText()) == 2 && len(p.startDayInput.GetText()) == 2 {
-		startDate := strings.TrimSpace(fmt.Sprintf(">=%s-%s-%s", p.startYearInput.GetText(), p.startMonthInput.GetText(), p.startDayInput.GetText()))
+	if len(p.startYearInput.GetText()) == 8 {
+		ymd := p.startYearInput.GetText()
+		startDate := fmt.Sprintf(">=%s-%s-%s", ymd[:4], ymd[4:6], ymd[6:8])
 		filter.AirDate = append(filter.AirDate, startDate)
 	}
-	if len(p.endYearInput.GetText()) == 4 && len(p.endMonthInput.GetText()) == 2 && len(p.endDayInput.GetText()) == 2 {
-		endDate := strings.TrimSpace(fmt.Sprintf("<=%s-%s-%s", p.endYearInput.GetText(), p.endMonthInput.GetText(), p.endDayInput.GetText()))
+	if len(p.endYearInput.GetText()) == 8 {
+		ymd := p.endYearInput.GetText()
+		endDate := fmt.Sprintf("<=%s-%s-%s", ymd[:4], ymd[4:6], ymd[6:8])
 		filter.AirDate = append(filter.AirDate, endDate)
 	}
 	if keyword == "" && tags == "" && len(selectedTypes) == 0 && len(filter.AirDate) == 0 {
@@ -156,26 +142,9 @@ func (p *SearchPage) render() {
 	// Use flexible row heights for better layout
 	p.Grid.SetRows(2, 2, 2, 2, 0, 1)
 	p.Grid.SetColumns(0)
-	// Date pickers in one row
-	centeredDash := func() *tview.TextView {
-		tv := tview.NewTextView().SetText("-")
-		tv.SetTextAlign(tview.AlignCenter)
-		tv.SetTextColor(tcell.ColorGray)
-		return tv
-	}
 	dateFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
-	dateFlex.AddItem(tview.NewTextView().SetText("起始日期: "), 10, 0, false)
-	dateFlex.AddItem(p.startYearInput, 6, 0, false)
-	dateFlex.AddItem(centeredDash(), 2, 0, false)
-	dateFlex.AddItem(p.startMonthInput, 4, 0, false)
-	dateFlex.AddItem(centeredDash(), 2, 0, false)
-	dateFlex.AddItem(p.startDayInput, 4, 0, false)
-	dateFlex.AddItem(tview.NewTextView().SetText("  结束日期: "), 12, 0, false)
-	dateFlex.AddItem(p.endYearInput, 6, 0, false)
-	dateFlex.AddItem(centeredDash(), 2, 0, false)
-	dateFlex.AddItem(p.endMonthInput, 4, 0, false)
-	dateFlex.AddItem(centeredDash(), 2, 0, false)
-	dateFlex.AddItem(p.endDayInput, 4, 0, false)
+	dateFlex.AddItem(p.startYearInput, 18, 0, false)
+	dateFlex.AddItem(p.endYearInput, 24, 0, false)
 
 	// Create typeFlex locally
 	typeFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -222,6 +191,7 @@ func (p *SearchPage) render() {
 	}
 }
 
+// makeInputCapture defines the previous and next primitive to focus
 func (p *SearchPage) makeInputCapture(next, prev tview.Primitive, enterTriggersFetch bool) func(event *tcell.EventKey) *tcell.EventKey {
 	return func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
@@ -252,29 +222,8 @@ func (p *SearchPage) setKeyBindings() {
 	// Tab order: searchInput -> tagInput -> startYear -> startMonth -> startDay -> endYear -> endMonth -> endDay -> typeCheckboxes[0] ...
 	p.searchInput.SetInputCapture(p.makeInputCapture(p.tagInput, nil, true))
 	p.tagInput.SetInputCapture(p.makeInputCapture(p.startYearInput, p.searchInput, true))
-	p.startYearInput.SetInputCapture(p.makeInputCapture(p.startMonthInput, p.tagInput, false))
-	p.startMonthInput.SetInputCapture(p.makeInputCapture(p.startDayInput, p.startYearInput, false))
-	p.startDayInput.SetInputCapture(p.makeInputCapture(p.endYearInput, p.startMonthInput, false))
-	p.endYearInput.SetInputCapture(p.makeInputCapture(p.endMonthInput, p.startDayInput, false))
-	p.endMonthInput.SetInputCapture(p.makeInputCapture(p.endDayInput, p.endYearInput, false))
-	// On enter in endDayInput, trigger search
-	p.endDayInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyEnter:
-			p.search()
-			return nil
-		case tcell.KeyTAB:
-			p.app.SetFocus(p.typeCheckboxes[0])
-			return nil
-		case tcell.KeyBacktab:
-			p.app.SetFocus(p.endMonthInput)
-			return nil
-		case tcell.KeyEsc:
-			p.app.SetFocus(p.table)
-			return nil
-		}
-		return event
-	})
+	p.startYearInput.SetInputCapture(p.makeInputCapture(p.endYearInput, p.tagInput, true))
+	p.endYearInput.SetInputCapture(p.makeInputCapture(p.typeCheckboxes[0], p.startYearInput, true))
 	for idx, cb := range p.typeCheckboxes {
 		cb.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			switch event.Key() {
@@ -292,7 +241,7 @@ func (p *SearchPage) setKeyBindings() {
 				if idx > 0 {
 					p.app.SetFocus(p.typeCheckboxes[idx-1])
 				} else {
-					p.app.SetFocus(p.endDayInput)
+					p.app.SetFocus(p.endYearInput)
 				}
 				return nil
 			case tcell.KeyLeft, tcell.KeyUp:
