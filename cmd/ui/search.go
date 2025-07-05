@@ -19,8 +19,8 @@ type SearchPage struct {
 	searchInput *tview.InputField
 	tagInput    *tview.InputField
 	// Date picker fields (start and end)
-	startYearInput *tview.InputField
-	endYearInput   *tview.InputField
+	startDateInput *tview.InputField
+	endDateInput   *tview.InputField
 	results        []api.Subject
 	typeCheckboxes []*tview.Checkbox
 	statusBar      *ui.StatusBar
@@ -56,8 +56,8 @@ func NewSearchPage(app *App) *SearchPage {
 		table:          tview.NewTable(),
 		searchInput:    tview.NewInputField().SetLabel("关键词: ").SetFieldWidth(40),
 		tagInput:       tview.NewInputField().SetLabel("标签  : ").SetFieldWidth(40),
-		startYearInput: startDate,
-		endYearInput:   endDate,
+		startDateInput: startDate,
+		endDateInput:   endDate,
 		typeCheckboxes: typeCheckboxes,
 		statusBar:      ui.NewStatusBar(),
 		currentPage:    1,
@@ -109,13 +109,13 @@ func (p *SearchPage) fetchData() {
 	tags := p.tagInput.GetText()
 	selectedTypes := p.CheckedTypes()
 	// Date range
-	if len(p.startYearInput.GetText()) == 8 {
-		ymd := p.startYearInput.GetText()
+	if len(p.startDateInput.GetText()) == 8 {
+		ymd := p.startDateInput.GetText()
 		startDate := fmt.Sprintf(">=%s-%s-%s", ymd[:4], ymd[4:6], ymd[6:8])
 		filter.AirDate = append(filter.AirDate, startDate)
 	}
-	if len(p.endYearInput.GetText()) == 8 {
-		ymd := p.endYearInput.GetText()
+	if len(p.endDateInput.GetText()) == 8 {
+		ymd := p.endDateInput.GetText()
 		endDate := fmt.Sprintf("<=%s-%s-%s", ymd[:4], ymd[4:6], ymd[6:8])
 		filter.AirDate = append(filter.AirDate, endDate)
 	}
@@ -150,11 +150,11 @@ func (p *SearchPage) render() {
 	p.searchInput.SetLabel("关键词: ").SetFieldWidth(40)
 	p.tagInput.SetLabel("标签:   ").SetFieldWidth(40)
 	// Use flexible row heights for better layout
-	p.Grid.SetRows(2, 2, 2, 2, 0, 1)
-	p.Grid.SetColumns(0)
+	p.SetRows(2, 2, 2, 2, 0, 1)
+	p.SetColumns(0)
 	dateFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
-	dateFlex.AddItem(p.startYearInput, 18, 0, false)
-	dateFlex.AddItem(p.endYearInput, 24, 0, false)
+	dateFlex.AddItem(p.startDateInput, 18, 0, false)
+	dateFlex.AddItem(p.endDateInput, 24, 0, false)
 
 	// Create typeFlex locally
 	typeFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -162,13 +162,13 @@ func (p *SearchPage) render() {
 		typeFlex.AddItem(cb, 8, 0, false)
 	}
 	// Add items to grid with correct row indices
-	p.Grid.Clear()
-	p.Grid.AddItem(p.searchInput, 0, 0, 1, 1, 0, 0, true)
-	p.Grid.AddItem(p.tagInput, 1, 0, 1, 1, 0, 0, false)
-	p.Grid.AddItem(dateFlex, 2, 0, 1, 1, 0, 0, false)
-	p.Grid.AddItem(typeFlex, 3, 0, 1, 1, 0, 0, false)
-	p.Grid.AddItem(p.table, 4, 0, 1, 1, 0, 0, false)
-	p.Grid.AddItem(p.statusBar, 5, 0, 1, 1, 0, 0, false)
+	p.Clear()
+	p.AddItem(p.searchInput, 0, 0, 1, 1, 0, 0, true)
+	p.AddItem(p.tagInput, 1, 0, 1, 1, 0, 0, false)
+	p.AddItem(dateFlex, 2, 0, 1, 1, 0, 0, false)
+	p.AddItem(typeFlex, 3, 0, 1, 1, 0, 0, false)
+	p.AddItem(p.table, 4, 0, 1, 1, 0, 0, false)
+	p.AddItem(p.statusBar, 5, 0, 1, 1, 0, 0, false)
 
 	// Set up the results table
 	p.table.Clear() // Clear all previous rows to avoid leftover data
@@ -232,9 +232,9 @@ func (p *SearchPage) makeInputCapture(next, prev tview.Primitive, enterTriggersF
 func (p *SearchPage) setKeyBindings() {
 	// Tab order: searchInput -> tagInput -> startYear -> startMonth -> startDay -> endYear -> endMonth -> endDay -> typeCheckboxes[0] ...
 	p.searchInput.SetInputCapture(p.makeInputCapture(p.tagInput, nil, true))
-	p.tagInput.SetInputCapture(p.makeInputCapture(p.startYearInput, p.searchInput, true))
-	p.startYearInput.SetInputCapture(p.makeInputCapture(p.endYearInput, p.tagInput, true))
-	p.endYearInput.SetInputCapture(p.makeInputCapture(p.typeCheckboxes[0], p.startYearInput, true))
+	p.tagInput.SetInputCapture(p.makeInputCapture(p.startDateInput, p.searchInput, true))
+	p.startDateInput.SetInputCapture(p.makeInputCapture(p.endDateInput, p.tagInput, true))
+	p.endDateInput.SetInputCapture(p.makeInputCapture(p.typeCheckboxes[0], p.startDateInput, true))
 	for idx, cb := range p.typeCheckboxes {
 		i := idx // capture index for closure
 		cb.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -253,7 +253,7 @@ func (p *SearchPage) setKeyBindings() {
 				if i > 0 {
 					p.app.SetFocus(p.typeCheckboxes[i-1])
 				} else {
-					p.app.SetFocus(p.endYearInput)
+					p.app.SetFocus(p.endDateInput)
 				}
 				return nil
 			case tcell.KeyLeft, tcell.KeyUp:

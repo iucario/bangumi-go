@@ -32,7 +32,10 @@ var searchCmd = &cobra.Command{
 		// Show help if no input is provided
 		if strings.TrimSpace(keyword) == "" && sort == "" && len(subjectType) == 0 && len(metaTags) == 0 &&
 			len(tags) == 0 && len(airDate) == 0 && len(rating) == 0 && len(rank) == 0 {
-			cmd.Help()
+			err := cmd.Help()
+			if err != nil {
+				fmt.Println("Unexpected error")
+			}
 			return
 		}
 
@@ -64,7 +67,7 @@ var searchCmd = &cobra.Command{
 		}
 
 		// Convert sort string to Sort type
-		var sortEnum, ok = api.SortMap[strings.ToLower(sort)]
+		sortEnum, ok := api.SortMap[strings.ToLower(sort)]
 		if !ok {
 			slog.Error("Invalid sort option", "sort", sort)
 			sortEnum = api.MATCH // Default to match if invalid
