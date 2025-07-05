@@ -11,15 +11,9 @@ func (c CollectionStatus) String() string {
 	return string(c)
 }
 
-type (
-	SubjectT      string
-	EpisodeStatus string
-)
+type EpisodeStatus string
 
-var (
-	C_STATUS = []CollectionStatus{Watching, Wish, Done, OnHold, Dropped}
-	S_Type   = []SubjectT{Book, Anime, Music, Game, Real}
-)
+var C_STATUS = []CollectionStatus{Watching, Wish, Done, OnHold, Dropped}
 
 const (
 	Wish     CollectionStatus = "wish"
@@ -28,15 +22,6 @@ const (
 	OnHold   CollectionStatus = "stashed"
 	Dropped  CollectionStatus = "dropped"
 	All      CollectionStatus = "all" // custom
-)
-
-const (
-	Book   SubjectT = "book"
-	Anime  SubjectT = "anime"
-	Music  SubjectT = "music"
-	Game   SubjectT = "game"
-	Real   SubjectT = "real"
-	AllSub SubjectT = "all" // custom
 )
 
 var CollectionType = map[CollectionStatus]int{
@@ -55,20 +40,12 @@ var CollectionTypeRev = map[int]CollectionStatus{
 	5: Dropped,
 }
 
-var SubjectType map[string]int = map[string]int{
+var SubjectMap map[string]int = map[string]int{
 	"book":  1,
 	"anime": 2,
 	"music": 3,
 	"game":  4,
 	"real":  6,
-}
-
-var SubjectTypeRev map[int]string = map[int]string{
-	1: "book",
-	2: "anime",
-	3: "music",
-	4: "game",
-	6: "real",
 }
 
 var EpisodeCollectionType map[string]int = map[string]int{
@@ -187,6 +164,21 @@ func (s *SlimSubject) GetName() string {
 
 func (s *SlimSubject) GetAllTags() string {
 	return tagNames(s.Tags)
+}
+
+// Get first num tags in a space-separated string
+func (s *SlimSubject) GetTags(num int) string {
+	if num <= 0 || len(s.Tags) == 0 {
+		return ""
+	}
+	if num > len(s.Tags) {
+		num = len(s.Tags)
+	}
+	names := make([]string, num)
+	for i := 0; i < num; i++ {
+		names[i] = s.Tags[i].Name
+	}
+	return strings.Join(names, " ")
 }
 
 // Returned type of /v0/users/-/collections/{subject_id}/episodes

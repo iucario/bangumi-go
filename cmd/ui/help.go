@@ -27,7 +27,7 @@ func NewHelpPage(app *App) *Help {
     4: Go to stashed list               Space/Enter: View subject
     5: Go to dropped list               
     6: Go to calendar
-    7: Go to search (not yet)           
+    7: Go to search         
     0: Go to user info (not yet)
     ?: Show this help
 

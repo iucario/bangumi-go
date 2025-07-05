@@ -21,6 +21,7 @@ var PAGES = []string{
 	"calendar",
 	"help",
 	"subject",
+	"search",
 }
 
 var MODALS = []string{
@@ -52,7 +53,7 @@ func NewApp(user *api.User) *App {
 // Run starts the TUI application with watching list and sets up the main pages.
 func (a *App) Run() error {
 	var wg sync.WaitGroup
-	wg.Add(len(api.C_STATUS) + 2) // Collection pages + static pages
+	wg.Add(len(PAGES) - 1) // Pages - subject
 
 	// Create all pages concurrently using sync.Map for thread safety
 	var collectionPages sync.Map
@@ -81,6 +82,9 @@ func (a *App) Run() error {
 	}()
 	go func() {
 		pageCreation(NewHelpPage(a))
+	}()
+	go func() {
+		pageCreation(NewSearchPage(a))
 	}()
 
 	// Wait for all pages to be created
@@ -209,6 +213,8 @@ func (a *App) handlePageSwitch(key rune) {
 		a.Goto("dropped")
 	case '6':
 		a.Goto("calendar")
+	case '7':
+		a.Goto("search")
 	case 'Q':
 		a.Stop()
 	case 'q', rune(tcell.KeyEsc):

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd"
@@ -10,7 +11,7 @@ import (
 
 var (
 	ConfigDir string
-	client    *api.AuthClient
+	Client    *api.AuthClient
 )
 
 // authCmd represents the auth command
@@ -18,6 +19,7 @@ var authCmd = &cobra.Command{
 	Use:   "auth",
 	Short: "Auth commands",
 	Run: func(cmd *cobra.Command, args []string) {
+		initializeAuthClient()
 		fmt.Println(`Available commands: 
 bgm auth login
 bgm auth logout
@@ -29,7 +31,14 @@ bgm auth refresh`)
 func init() {
 	cmd.RootCmd.AddCommand(authCmd)
 	ConfigDir = cmd.ConfigDir
+}
 
-	credential, _ := api.GetCredential()
-	client = api.NewAuthClient(credential.AccessToken)
+func initializeAuthClient() {
+	credential, err := api.GetCredential()
+	if err != nil || credential == nil {
+		slog.Error("Failed to get credential", "error", err)
+		return
+	}
+
+	Client = api.NewAuthClient(credential.AccessToken)
 }
