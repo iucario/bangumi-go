@@ -72,10 +72,20 @@ func NewSearchPage(app *App) *SearchPage {
 // search fetches data and render the ui accordingly
 func (p *SearchPage) search() {
 	p.statusBar.SetMessage("Searching...", "info")
-	// Only reset to first page if not already on a pagination action
-	if p.currentPage == 0 {
-		p.currentPage = 1
+	p.currentPage = 1 // Always reset to first page on new search
+	p.fetchData()
+	maxPage := 1
+	if p.pageSize > 0 {
+		maxPage = (p.totalResults + p.pageSize - 1) / p.pageSize
 	}
+	statusMsg := fmt.Sprintf("Found %d results (Page %d/%d)", p.totalResults, p.currentPage, maxPage)
+	p.statusBar.SetMessage(statusMsg, "success")
+	p.render()
+}
+
+// paginateSearch fetches data and renders the UI for the current page (without resetting page number)
+func (p *SearchPage) paginateSearch() {
+	p.statusBar.SetMessage("Searching...", "info")
 	p.fetchData()
 	maxPage := 1
 	if p.pageSize > 0 {
@@ -161,6 +171,7 @@ func (p *SearchPage) render() {
 	p.Grid.AddItem(p.statusBar, 5, 0, 1, 1, 0, 0, false)
 
 	// Set up the results table
+	p.table.Clear() // Clear all previous rows to avoid leftover data
 	p.table.SetBorders(false)
 	p.table.SetSelectable(true, false)
 
@@ -286,13 +297,13 @@ func (p *SearchPage) setKeyBindings() {
 				maxPage := (p.totalResults + p.pageSize - 1) / p.pageSize
 				if p.currentPage < maxPage {
 					p.currentPage++
-					p.search()
+					p.paginateSearch()
 				}
 				return nil
 			case 'p':
 				if p.currentPage > 1 {
 					p.currentPage--
-					p.search()
+					p.paginateSearch()
 				}
 				return nil
 			default:
