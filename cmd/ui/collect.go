@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -116,4 +117,29 @@ func indexOfCollection(collections []api.UserSubjectCollection, subjectID uint32
 		}
 	}
 	return -1 // Return -1 if not found
+}
+
+// CollectionInfoChanged returns true if any of the main collection info fields have changed.
+func CollectionInfoChanged(original, updated *api.UserSubjectCollection) bool {
+	if original.GetStatus() != updated.GetStatus() {
+		return true
+	}
+	if !slices.Equal(original.Tags, updated.Tags) {
+		return true
+	}
+	if original.Comment != updated.Comment {
+		return true
+	}
+	if original.Rate != updated.Rate {
+		return true
+	}
+	if original.Private != updated.Private {
+		return true
+	}
+	return false
+}
+
+// EpisodeStatusChanged returns true if the watched episode status has changed.
+func EpisodeStatusChanged(original, updated *api.UserSubjectCollection) bool {
+	return original.EpStatus != updated.EpStatus
 }

@@ -264,21 +264,29 @@ func (c *CollectionPage) renderDetail() {
 	}
 }
 
+// onSave post collection data if the data has changed. Watch to N episode if only changed.
 func (c *CollectionPage) onSave(collection *api.UserSubjectCollection) error {
-	err := subject.PostCollection(c.app.User.Client, int(collection.SubjectID), collection.GetStatus(),
-		collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
-	if err != nil {
-		slog.Error("Failed to post collection", "Error", err)
-		return err
-	}
-	subject.WatchToEpisode(c.app.User.Client, int(collection.SubjectID), int(collection.EpStatus))
-
-	// Reorder the list and update the data in the watch list
+	// Find the original collection for comparison
 	updatedIndex := indexOfCollection(c.Collections, collection.SubjectID)
-	if updatedIndex <= 0 {
+	if updatedIndex < 0 {
 		slog.Error("Collection not found in the list")
 		return errors.New("collection not found in the list")
 	}
+	original := c.Collections[updatedIndex]
+
+	if CollectionInfoChanged(&original, collection) {
+		err := subject.PostCollection(c.app.User.Client, int(collection.SubjectID), collection.GetStatus(),
+			collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
+		if err != nil {
+			slog.Error("Failed to post collection", "Error", err)
+			return err
+		}
+	}
+
+	if EpisodeStatusChanged(&original, collection) {
+		subject.WatchToEpisode(c.app.User.Client, int(collection.SubjectID), int(collection.EpStatus))
+	}
+
 	c.Collections = toFrontItem(c.Collections, updatedIndex)
 	c.Collections[0] = *collection
 	c.renderListItems()
