@@ -188,22 +188,35 @@ func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) error {
 		slog.Error("collecting nil subject")
 		return errors.New("subject is nil")
 	}
-	err := subject.PostCollection(
-		s.app.User.Client,
-		int(s.Subject.ID),
-		collection.GetStatus(),
-		collection.Tags,
-		collection.Comment,
-		int(collection.Rate),
-		collection.Private,
-	)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
-		return err
+	// Find the original collection for comparison
+	var original *api.UserSubjectCollection
+	if s.Collection != nil && s.Collection.SubjectID == collection.SubjectID {
+		original = s.Collection
+	} else {
+		original = &api.UserSubjectCollection{}
 	}
-	subject.WatchToEpisode(s.app.User.Client, int(s.Subject.ID), int(collection.EpStatus))
 
-	// TODO: update collection info
+	if CollectionInfoChanged(original, collection) {
+		err := subject.PostCollection(
+			s.app.User.Client,
+			int(s.Subject.ID),
+			collection.GetStatus(),
+			collection.Tags,
+			collection.Comment,
+			int(collection.Rate),
+			collection.Private,
+		)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
+			return err
+		}
+	}
+
+	if EpisodeStatusChanged(original, collection) {
+		subject.WatchToEpisode(s.app.User.Client, int(s.Subject.ID), int(collection.EpStatus))
+	}
+
+	// Update collection info
 	s.Collection = collection
 	s.leftContent.SetText(s.createLeftText())
 	s.rightContent.SetText(s.createRightText())
