@@ -81,7 +81,7 @@ jobs:
           go-version: stable
 
       - name: Fetch tags
-        run: git fetch --tags
+        run: git fetch --tags --force
 
       - name: Get latest tag
         id: get_tag
