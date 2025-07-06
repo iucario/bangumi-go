@@ -103,6 +103,62 @@ func PostCollection(c *api.AuthClient, subjectId int, status api.CollectionStatu
 	return nil // TODO: maybe return the collection struct
 }
 
+// PatchCollection only patches changed information. All arguments except c and subjectId are optional (can be nil/zero value).
+// Patching episode status can only be used for books, not animes.
+// PatchCollection is not used anywhere because it can be replaced by PostCollection
+func PatchCollection(
+	c *api.AuthClient,
+	subjectId int,
+	status *api.CollectionStatus,
+	tags *[]string,
+	comment *string,
+	rate *int,
+	private *bool,
+	ep_status *int,
+	vol_status *int,
+) error {
+	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d", subjectId)
+	// Only include changed fields
+	requestBody := make(map[string]any)
+	if status != nil {
+		requestBody["type"] = api.CollectionType[*status]
+	}
+	if rate != nil {
+		requestBody["rate"] = *rate
+	}
+	if comment != nil {
+		requestBody["comment"] = *comment
+	}
+	if private != nil {
+		requestBody["private"] = *private
+	}
+	if tags != nil {
+		requestBody["tags"] = *tags
+	}
+	if ep_status != nil {
+		requestBody["ep_status"] = *ep_status
+	}
+	if vol_status != nil {
+		requestBody["vol_status"] = *vol_status
+	}
+	if len(requestBody) == 0 {
+		slog.Warn("No fields to patch in PatchCollection")
+		return nil
+	}
+	jsonBytes, err := json.Marshal(requestBody)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to marshal request body: %v", err))
+		return err
+	}
+	_, err = c.Patch(url, jsonBytes)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to patch collection: %v", err))
+		return err
+	}
+	slog.Debug("Successfully patched subject", "ID", subjectId)
+	return nil
+}
+
 // status: delete, wish, done, dropped
 func PutEpisode(c *api.AuthClient, episodeId int, status string) error {
 	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/-/episodes/%d", episodeId)
