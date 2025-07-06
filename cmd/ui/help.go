@@ -24,8 +24,8 @@ func NewHelpPage(app *App) *Help {
     1: Go to watching list              e: Edit collection
     2: Go to wish list                  R: Refresh list
     3: Go to done list                  n: Load next page
-    4: Go to stashed list               Space/Enter: View subject
-    5: Go to dropped list               
+    4: Go to stashed list               p: Load previous page
+    5: Go to dropped list               Space/Enter: View subject
     6: Go to calendar
     7: Go to search         
     0: Go to user info (not yet)
