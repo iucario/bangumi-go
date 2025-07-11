@@ -16,7 +16,7 @@ var uiCmd = &cobra.Command{
 		authClient := api.NewAuthClientWithConfig()
 		user := api.NewUser(authClient)
 		if user == nil {
-			auth.BrowserLogin()
+			auth.BrowserLogin(authClient)
 			// Try again after login
 			authClient = api.NewAuthClientWithConfig()
 			user = api.NewUser(authClient)

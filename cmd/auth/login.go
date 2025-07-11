@@ -25,19 +25,19 @@ var loginCmd = &cobra.Command{
 		_, err := api.GetCredential()
 		if err != nil {
 			// Token does not exist, login from browser
-			BrowserLogin()
+			BrowserLogin(Client)
 		} else if Client.GetStatus() {
 			fmt.Println("Token is still valid")
 			return
 		}
 		_, err = Client.RefreshToken()
 		if err != nil {
-			BrowserLogin()
+			BrowserLogin(Client)
 		}
 	},
 }
 
-func BrowserLogin() {
+func BrowserLogin(c *api.AuthClient) {
 	fmt.Println("Login to https://bgm.tv")
 	apiAuth := "https://bgm.tv/oauth/authorize"
 	responseType := "code"
@@ -46,7 +46,7 @@ func BrowserLogin() {
 
 	serverDone := &sync.WaitGroup{}
 	serverDone.Add(1)
-	start(serverDone)
+	start(serverDone, c)
 
 	openBrowser(LOGIN_URL)
 	fmt.Println("If your browser is not opened automatically. Manually open this URL in browser and login:")
@@ -55,7 +55,7 @@ func BrowserLogin() {
 	serverDone.Wait()
 }
 
-func start(wg *sync.WaitGroup) {
+func start(wg *sync.WaitGroup, c *api.AuthClient) {
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),
 		ReadTimeout:  5 * time.Second,
@@ -66,7 +66,7 @@ func start(wg *sync.WaitGroup) {
 	http.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 		if code != "" {
-			Client.GetAccessToken(code)
+			c.GetAccessToken(code)
 			fmt.Println("Login success.")
 			w.Header().Set("Connection", "close")
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
