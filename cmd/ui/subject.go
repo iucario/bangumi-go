@@ -196,7 +196,10 @@ func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) error {
 	var original *api.UserSubjectCollection
 	if s.Collection != nil && s.Collection.SubjectID == collection.SubjectID && s.Collection.Type > 0 {
 		original = s.Collection
-		subject.PatchCollection(s.app.User.Client, original, collection)
+		err := subject.PatchCollection(s.app.User.Client, original, collection)
+		if err != nil {
+			return err
+		}
 	} else {
 		original = &api.UserSubjectCollection{}
 		err := subject.PostCollection(
