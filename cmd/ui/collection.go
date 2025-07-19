@@ -229,9 +229,13 @@ func (c *CollectionPage) setKeyBindings() {
 					slog.Warn("Invalid collection index for edit")
 					return event
 				}
-				modal := NewCollectModal(c.app, c.Collections[index], c.onSave)
-				c.app.Pages.AddPage("collect", modal, true, true)
-				c.app.SetFocus(modal)
+				modal := NewCollectModal(c.app, &c.Collections[index], c.onSave)
+				if modal != nil {
+					c.app.Pages.AddPage("collect", modal, true, true)
+					c.app.SetFocus(modal)
+				} else {
+					c.app.NotifyWithStyle("collection is nil", "error")
+				}
 			case 'R':
 				c.Refresh()
 			case 'n':
@@ -274,15 +278,13 @@ func (c *CollectionPage) onSave(collection *api.UserSubjectCollection) error {
 	}
 	original := c.Collections[updatedIndex]
 
-	if CollectionInfoChanged(&original, collection) {
-		err := subject.PostCollection(c.app.User.Client, int(collection.SubjectID), collection.GetStatus(),
-			collection.Tags, collection.Comment, int(collection.Rate), collection.Private)
-		if err != nil {
-			slog.Error("Failed to post collection", "Error", err)
-			return err
-		}
+	// Collection info excluding episode/volume status
+	err := subject.PatchCollection(c.app.User.Client, &original, collection)
+	if err != nil {
+		slog.Error("Saving collection", "Error", err)
+		return err
 	}
-
+	// Episode/volume status update
 	if EpisodeStatusChanged(&original, collection) {
 		subject.WatchToEpisode(c.app.User.Client, int(collection.SubjectID), int(collection.EpStatus))
 	}

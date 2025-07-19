@@ -169,9 +169,13 @@ func (s *SubjectPage) setKeyBindings() {
 		case tcell.KeyRune:
 			switch event.Rune() {
 			case 'e':
-				modal := NewCollectModal(s.app, *s.Collection, s.onSave)
-				s.app.Pages.AddPage("collect", modal, true, true)
-				s.app.SetFocus(modal)
+				modal := NewCollectModal(s.app, s.Collection, s.onSave)
+				if modal != nil {
+					s.app.Pages.AddPage("collect", modal, true, true)
+					s.app.SetFocus(modal)
+				} else {
+					s.app.NotifyWithStyle("collection is nil", "error")
+				}
 			case 'R':
 				s.Refresh()
 			default:
@@ -190,13 +194,11 @@ func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) error {
 	}
 	// Find the original collection for comparison
 	var original *api.UserSubjectCollection
-	if s.Collection != nil && s.Collection.SubjectID == collection.SubjectID {
+	if s.Collection != nil && s.Collection.SubjectID == collection.SubjectID && s.Collection.Type > 0 {
 		original = s.Collection
+		subject.PatchCollection(s.app.User.Client, original, collection)
 	} else {
 		original = &api.UserSubjectCollection{}
-	}
-
-	if CollectionInfoChanged(original, collection) {
 		err := subject.PostCollection(
 			s.app.User.Client,
 			int(s.Subject.ID),

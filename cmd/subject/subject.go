@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/iucario/bangumi-go/api"
 	"github.com/iucario/bangumi-go/cmd"
@@ -103,43 +104,37 @@ func PostCollection(c *api.AuthClient, subjectId int, status api.CollectionStatu
 	return nil // TODO: maybe return the collection struct
 }
 
+type PatchCollectionParams struct {
+	Status    *api.CollectionStatus
+	Tags      *[]string
+	Comment   *string
+	Rate      *int
+	Private   *bool
+	EpStatus  *int // not used
+	VolStatus *int // not used
+}
+
 // PatchCollection only patches changed information. All arguments except c and subjectId are optional (can be nil/zero value).
 // Patching episode status can only be used for books, not animes.
 // PatchCollection is not used anywhere because it can be replaced by PostCollection
-func PatchCollection(
-	c *api.AuthClient,
-	subjectId int,
-	status *api.CollectionStatus,
-	tags *[]string,
-	comment *string,
-	rate *int,
-	private *bool,
-	ep_status *int,
-	vol_status *int,
-) error {
-	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d", subjectId)
-	// Only include changed fields
+func PatchCollection(c *api.AuthClient, original, updated *api.UserSubjectCollection) error {
+	url := fmt.Sprintf("https://api.bgm.tv/v0/users/-/collections/%d", updated.SubjectID)
 	requestBody := make(map[string]any)
-	if status != nil {
-		requestBody["type"] = api.CollectionType[*status]
+	// Compare and patch only changed fields (excluding episode/volume status)
+	if updated.GetStatus() != original.GetStatus() {
+		requestBody["type"] = api.CollectionType[updated.GetStatus()]
 	}
-	if rate != nil {
-		requestBody["rate"] = *rate
+	if updated.Rate != original.Rate {
+		requestBody["rate"] = int(updated.Rate)
 	}
-	if comment != nil {
-		requestBody["comment"] = *comment
+	if updated.Comment != original.Comment {
+		requestBody["comment"] = updated.Comment
 	}
-	if private != nil {
-		requestBody["private"] = *private
+	if updated.Private != original.Private {
+		requestBody["private"] = updated.Private
 	}
-	if tags != nil {
-		requestBody["tags"] = *tags
-	}
-	if ep_status != nil {
-		requestBody["ep_status"] = *ep_status
-	}
-	if vol_status != nil {
-		requestBody["vol_status"] = *vol_status
+	if !slices.Equal(updated.Tags, original.Tags) {
+		requestBody["tags"] = updated.Tags
 	}
 	if len(requestBody) == 0 {
 		slog.Warn("No fields to patch in PatchCollection")
@@ -155,7 +150,7 @@ func PatchCollection(
 		slog.Error(fmt.Sprintf("Failed to patch collection: %v", err))
 		return err
 	}
-	slog.Debug("Successfully patched subject", "ID", subjectId)
+	slog.Debug("Successfully patched subject", "ID", updated.SubjectID)
 	return nil
 }
 
@@ -199,4 +194,24 @@ func PatchEpisodes(c *api.AuthClient, subjectId int, episodeIds []int, status st
 		slog.Error(fmt.Sprintf("Failed to patch episodes: %v", err))
 	}
 	return err
+}
+
+// CollectionInfoChanged returns true if any of the main collection info fields have changed.
+func CollectionInfoChanged(original, updated *api.UserSubjectCollection) bool {
+	if original.GetStatus() != updated.GetStatus() {
+		return true
+	}
+	if !slices.Equal(original.Tags, updated.Tags) {
+		return true
+	}
+	if original.Comment != updated.Comment {
+		return true
+	}
+	if original.Rate != updated.Rate {
+		return true
+	}
+	if original.Private != updated.Private {
+		return true
+	}
+	return false
 }

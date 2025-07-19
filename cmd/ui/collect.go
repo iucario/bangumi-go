@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"log/slog"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -21,12 +20,15 @@ type CollectModal struct {
 	app *App // Reference to the main app for closing the modal
 }
 
-func NewCollectModal(a *App, collection api.UserSubjectCollection, onSave func(*api.UserSubjectCollection) error) *CollectModal {
+func NewCollectModal(a *App, collection *api.UserSubjectCollection, onSave func(*api.UserSubjectCollection) error) *CollectModal {
+	if collection == nil {
+		return nil
+	}
 	modal := &CollectModal{
 		Modal: nil,
 		app:   a,
 	}
-	form := modal.createForm(collection, onSave)
+	form := modal.createForm(*collection, onSave)
 	modal.Modal = ui.NewModalForm("Edit Collection", form)
 
 	// Set input capture at the form level to catch Esc
@@ -124,26 +126,6 @@ func indexOfCollection(collections []api.UserSubjectCollection, subjectID uint32
 		}
 	}
 	return -1 // Return -1 if not found
-}
-
-// CollectionInfoChanged returns true if any of the main collection info fields have changed.
-func CollectionInfoChanged(original, updated *api.UserSubjectCollection) bool {
-	if original.GetStatus() != updated.GetStatus() {
-		return true
-	}
-	if !slices.Equal(original.Tags, updated.Tags) {
-		return true
-	}
-	if original.Comment != updated.Comment {
-		return true
-	}
-	if original.Rate != updated.Rate {
-		return true
-	}
-	if original.Private != updated.Private {
-		return true
-	}
-	return false
 }
 
 // EpisodeStatusChanged returns true if the watched episode status has changed.
