@@ -78,8 +78,15 @@ func (m *CollectModal) createForm(collection api.UserSubjectCollection, onSave f
 		collection.SetStatus(api.CollectionStatus(option))
 	})
 	form.AddInputField("Tags(Separate by spaces)", initTags, 0, nil, func(text string) {
-		// TODO: validate tags
-		collection.Tags = strings.Split(text, " ")
+		// Strip, split, and filter tags to be at least 2 letters long
+		rawTags := strings.Fields(strings.TrimSpace(text))
+		filtered := make([]string, 0, len(rawTags))
+		for _, tag := range rawTags {
+			if len([]rune(tag)) >= 2 {
+				filtered = append(filtered, tag)
+			}
+		}
+		collection.Tags = filtered
 	})
 	form.AddInputField("Rate", util.Uint32ToString(collection.Rate), 3, nil, func(text string) {
 		rate, err := strconv.Atoi(text)
