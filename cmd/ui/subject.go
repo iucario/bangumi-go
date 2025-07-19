@@ -169,9 +169,13 @@ func (s *SubjectPage) setKeyBindings() {
 		case tcell.KeyRune:
 			switch event.Rune() {
 			case 'e':
-				modal := NewCollectModal(s.app, *s.Collection, s.onSave)
-				s.app.Pages.AddPage("collect", modal, true, true)
-				s.app.SetFocus(modal)
+				modal := NewCollectModal(s.app, s.Collection, s.onSave)
+				if modal != nil {
+					s.app.Pages.AddPage("collect", modal, true, true)
+					s.app.SetFocus(modal)
+				} else {
+					s.app.NotifyWithStyle("collection is nil", "error")
+				}
 			case 'R':
 				s.Refresh()
 			default:
@@ -188,22 +192,36 @@ func (s *SubjectPage) onSave(collection *api.UserSubjectCollection) error {
 		slog.Error("collecting nil subject")
 		return errors.New("subject is nil")
 	}
-	err := subject.PostCollection(
-		s.app.User.Client,
-		int(s.Subject.ID),
-		collection.GetStatus(),
-		collection.Tags,
-		collection.Comment,
-		int(collection.Rate),
-		collection.Private,
-	)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
-		return err
+	// Find the original collection for comparison
+	var original *api.UserSubjectCollection
+	if s.Collection != nil && s.Collection.SubjectID == collection.SubjectID && s.Collection.Type > 0 {
+		original = s.Collection
+		err := subject.PatchCollection(s.app.User.Client, original, collection)
+		if err != nil {
+			return err
+		}
+	} else {
+		original = &api.UserSubjectCollection{}
+		err := subject.PostCollection(
+			s.app.User.Client,
+			int(s.Subject.ID),
+			collection.GetStatus(),
+			collection.Tags,
+			collection.Comment,
+			int(collection.Rate),
+			collection.Private,
+		)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Failed to post collection: %v", err))
+			return err
+		}
 	}
-	subject.WatchToEpisode(s.app.User.Client, int(s.Subject.ID), int(collection.EpStatus))
 
-	// TODO: update collection info
+	if EpisodeStatusChanged(original, collection) {
+		subject.WatchToEpisode(s.app.User.Client, int(s.Subject.ID), int(collection.EpStatus))
+	}
+
+	// Update collection info
 	s.Collection = collection
 	s.leftContent.SetText(s.createLeftText())
 	s.rightContent.SetText(s.createRightText())

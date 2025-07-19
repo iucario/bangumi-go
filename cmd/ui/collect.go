@@ -20,12 +20,15 @@ type CollectModal struct {
 	app *App // Reference to the main app for closing the modal
 }
 
-func NewCollectModal(a *App, collection api.UserSubjectCollection, onSave func(*api.UserSubjectCollection) error) *CollectModal {
+func NewCollectModal(a *App, collection *api.UserSubjectCollection, onSave func(*api.UserSubjectCollection) error) *CollectModal {
+	if collection == nil {
+		return nil
+	}
 	modal := &CollectModal{
 		Modal: nil,
 		app:   a,
 	}
-	form := modal.createForm(collection, onSave)
+	form := modal.createForm(*collection, onSave)
 	modal.Modal = ui.NewModalForm("Edit Collection", form)
 
 	// Set input capture at the form level to catch Esc
@@ -77,8 +80,15 @@ func (m *CollectModal) createForm(collection api.UserSubjectCollection, onSave f
 		collection.SetStatus(api.CollectionStatus(option))
 	})
 	form.AddInputField("Tags(Separate by spaces)", initTags, 0, nil, func(text string) {
-		// TODO: validate tags
-		collection.Tags = strings.Split(text, " ")
+		// Strip, split, and filter tags to be at least 2 letters long
+		rawTags := strings.Fields(strings.TrimSpace(text))
+		filtered := make([]string, 0, len(rawTags))
+		for _, tag := range rawTags {
+			if len([]rune(tag)) >= 2 {
+				filtered = append(filtered, tag)
+			}
+		}
+		collection.Tags = filtered
 	})
 	form.AddInputField("Rate", util.Uint32ToString(collection.Rate), 3, nil, func(text string) {
 		rate, err := strconv.Atoi(text)
@@ -116,4 +126,9 @@ func indexOfCollection(collections []api.UserSubjectCollection, subjectID uint32
 		}
 	}
 	return -1 // Return -1 if not found
+}
+
+// EpisodeStatusChanged returns true if the watched episode status has changed.
+func EpisodeStatusChanged(original, updated *api.UserSubjectCollection) bool {
+	return original.EpStatus != updated.EpStatus
 }
