@@ -11,7 +11,7 @@ import (
 
 var (
 	ConfigDir string
-	Client    *api.AuthClient
+	Client    *api.AuthClient = api.NewAuthClient("")
 )
 
 // authCmd represents the auth command
@@ -19,7 +19,6 @@ var authCmd = &cobra.Command{
 	Use:   "auth",
 	Short: "Auth commands",
 	Run: func(cmd *cobra.Command, args []string) {
-		initializeAuthClient()
 		fmt.Println(`Available commands: 
 bgm auth login
 bgm auth logout
@@ -31,6 +30,7 @@ bgm auth refresh`)
 func init() {
 	cmd.RootCmd.AddCommand(authCmd)
 	ConfigDir = cmd.ConfigDir
+	initializeAuthClient()
 }
 
 func initializeAuthClient() {
