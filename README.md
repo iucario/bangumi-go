@@ -2,7 +2,7 @@
 
 Bangumi CLI and TUI in Golang
 
-It is under active development and features will change.
+It is under active development and features will change. Feel free to submit an issue if you find one.
 
 ## Commands
 
@@ -37,6 +37,9 @@ Collection
 Edit collection
 ![collect](./image/collect.png)
 
+Search
+![search](./image/search.png)
+
 ## Development
 
 Build
@@ -51,6 +54,8 @@ Lint
 gofumpt -w .
 golangci-lint run
 ```
+
+Or `make`
 
 CLI
 
