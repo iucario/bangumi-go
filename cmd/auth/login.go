@@ -22,15 +22,15 @@ var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Login to https://bgm.tv (bangumi.tv)",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := api.GetCredential()
-		if err != nil {
-			// Token does not exist, login from browser
-			BrowserLogin(Client)
-		} else if Client.GetStatus() {
+		Client := api.NewAuthClientWithConfig()
+		if Client.GetStatus() {
 			fmt.Println("Token is still valid")
 			return
+		} else {
+			// Token does not exist, login from browser
+			BrowserLogin(Client)
 		}
-		_, err = Client.RefreshToken()
+		_, err := Client.RefreshToken()
 		if err != nil {
 			BrowserLogin(Client)
 		}

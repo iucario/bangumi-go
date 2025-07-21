@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/iucario/bangumi-go/api"
 	"github.com/spf13/cobra"
 )
 
@@ -11,6 +12,7 @@ var refreshCmd = &cobra.Command{
 	Use:   "refresh",
 	Short: "Refresh token",
 	Run: func(cmd *cobra.Command, args []string) {
+		Client := api.NewAuthClientWithConfig()
 		credential, err := Client.RefreshToken()
 		if err != nil {
 			fmt.Println("Failed to refresh token", err)
