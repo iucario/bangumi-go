@@ -31,7 +31,7 @@ It is under active development and features will change. Feel free to submit an 
 Calendar
 ![calendar](./image/cal.png)
 
-Sbject
+Subject
 ![subject](./image/subject.png)
 
 Collection
@@ -106,6 +106,8 @@ If you have Go installed, you can install the binary directly using the followin
 
 ```sh
 go install github.com/iucario/bangumi-go@latest
+cd ~/go/bin
+mv bangumi-go bgm
 ```
 
 This will install the `bgm` binary in your `$GOPATH/bin` or `$HOME/go/bin` directory. Make sure this directory is in your system's PATH to use the `bgm` command globally.
