@@ -2,6 +2,9 @@
 
 Bangumi CLI and TUI in Golang
 
+Bangumi.tv is a database where users can save and manage their watched status and episode progress for TV shows, anime, and games.
+With bangumi-cli, users can easily interact with the website on their terminals.
+
 It is under active development and features will change. Feel free to submit an issue if you find one.
 
 ## Commands
